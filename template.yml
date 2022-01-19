@@ -13,8 +13,8 @@ Resources:
   ECSApprovedContainerRegistyFunction:
     Type: AWS::Serverless::Function 
     Properties:
-      CodeUri: ecs-opa/
-      Handler: ecs-opa
+      CodeUri: cosign-ecs-function/
+      Handler: cosign-ecs-function
       Runtime: go1.x
       Environment:
         Variables:

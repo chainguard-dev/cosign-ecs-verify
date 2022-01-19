@@ -7,6 +7,10 @@
 
 # Crash log files
 crash.log
+.idea/
+terraform/.terraform.lock.hcl
+terraform/plan.out
+.aws-sam/
 
 # Ignore any .tfvars files that are generated automatically for each Terraform run. Most
 # .tfvars files are managed as part of configuration and so should be included in

@@ -15,29 +15,6 @@ export
 aws_account:
 	$(ACCOUNT_ID)
 
-docker_build:
-	docker build -t $(ACCOUNT_ID).dkr.ecr.$(AWS_REGION).amazonaws.com/$(IMAGE):$(VERSION) .
-
-.SILENT: ecr_auth
-ecr_auth:
-	docker login --username AWS -p $(shell aws ecr get-login-password --region $(AWS_REGION) ) $(ACCOUNT_ID).dkr.ecr.$(AWS_REGION).amazonaws.com
-
-docker_push: ecr_auth
-	docker push $(ACCOUNT_ID).dkr.ecr.$(AWS_REGION).amazonaws.com/$(IMAGE):$(VERSION)
-
-ecr_scan:
-	aws ecr start-image-scan --repository-name $(IMAGE) --image-id imageTag=$(VERSION)
-
-ecr_scan_findings:
-	aws ecr describe-image-scan-findings --repository-name $(IMAGE) --image-id imageTag=$(VERSION)
-
-docker_run:
-	docker run -it --rm $(ACCOUNT_ID).dkr.ecr.$(AWS_REGION).amazonaws.com/$(IMAGE):$(VERSION)
-
-check:
-	terraform -v  >/dev/null 2>&1 || echo "Terraform not installed" || exit 1 && \
-	aws --version  >/dev/null 2>&1 || echo "AWS not installed" || exit 1 && \
-
 tf_clean:
 	cd terraform/ && \
 	rm -rf .terraform \
@@ -71,4 +48,13 @@ key_gen:
 
 verify: key_gen
 	cosign verify --key cosign.pub $(ACCOUNT_ID).dkr.ecr.$(AWS_REGION).amazonaws.com/$(IMAGE):$(VERSION)
+
+build:
+	sam build
+
+deploy:
+	sam deploy
+
+local:
+	sam local invoke -e event.json
 
