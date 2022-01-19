@@ -1,0 +1,86 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  ecs_cosign_verify
+  
+  Template for ecs_cosign_verify
+
+Globals:
+  Function:
+    Timeout: 5
+
+Resources:
+  ECSApprovedContainerRegistyFunction:
+    Type: AWS::Serverless::Function 
+    Properties:
+      CodeUri: ecs-opa/
+      Handler: ecs-opa
+      Runtime: go1.x
+      Environment:
+        Variables:
+          SNS_TOPIC_ARN: !Ref TeamNotificationTopic
+      Tracing: Active
+      Policies:
+      - AWSXrayWriteOnlyAccess
+      - AWSLambdaBasicExecutionRole
+      - SNSPublishMessagePolicy:
+          TopicName: 
+            !Ref TeamNotificationTopic
+      - Statement:
+        - Sid: ECSTaskPolicy
+          Effect: Allow
+          Action:
+          - ecs:StopTask
+          Resource: !Sub 'arn:aws:ecs:${AWS::Region}:${AWS::AccountId}:task/*' 
+      - Statement:
+        - Sid: ECSServiceRWPolicy
+          Effect: Allow
+          Action:
+          - ecs:UpdateService
+          Resource: !Sub 'arn:aws:ecs:${AWS::Region}:${AWS::AccountId}:service/*'
+      - Statement:
+        - Sid: ECSServiceListPolicy
+          Effect: Allow
+          Action:
+          - ecs:ListServices
+          Resource: '*'
+      - Statement:
+        - Sid: ECSTaskDefinitionPolicy
+          Effect: Allow
+          Action:
+          - ecs:DeregisterTaskDefinition
+          Resource: '*'
+      - Statement:
+        - Sid: KMSPolicy
+          Effect: Allow
+          Action:
+          - kms:GenerateDataKey
+          - kms:Decrypt
+          Resource: !GetAtt TeamNotificationTopicKey.Arn
+      Events:
+        Trigger:
+          Type: CloudWatchEvent 
+          Properties:
+            Pattern:
+              source:
+                - aws.ecs
+              detail-type:
+                - "ECS Task State Change"
+              detail:
+                desiredStatus:
+                  - "prefix": "RUN"
+  TeamNotificationTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      KmsMasterKeyId: !GetAtt TeamNotificationTopicKey.Arn
+  TeamNotificationTopicKey:
+    Type: AWS::KMS::Key
+    Properties:
+      KeyPolicy:
+        Statement:
+          - Action: kms:*
+            Effect: Allow
+            Principal:
+              AWS: !Sub 'arn:aws:iam::${AWS::AccountId}:root' 
+            Resource: '*'
+      EnableKeyRotation: true
