@@ -68,7 +68,8 @@ Resources:
                 - "ECS Task State Change"
               detail:
                 desiredStatus:
-                  - "prefix": "RUN"
+                  - "StartTask"
+                  - "RunTask"
   TeamNotificationTopic:
     Type: AWS::SNS::Topic
     Properties:

@@ -8,6 +8,7 @@ REPO_INFO ?= $(shell git config --get remote.origin.url)
 COMMIT_SHA ?= git-$(shell git rev-parse --short HEAD)
 COSIGN_ROLE_NAME ?= "$(NAME)-codebuild"
 ACCOUNT_ID ?= $(shell aws sts get-caller-identity --query Account --output text)
+PACKAGED_TEMPLATE = packaged.yml
 
 export
 
@@ -44,23 +45,26 @@ tf_destroy:
 	cd terraform/ && \
 	terraform destroy -var="name=${NAME}" -var="image_name=${IMAGE}" -var="image_version=${VERSION}"  -auto-approve
 
-sign:
-	cosign sign --key awskms:///alias/$(NAME) $(ACCOUNT_ID).dkr.ecr.$(AWS_REGION).amazonaws.com/$(IMAGE):$(VERSION)
+go_build: ./cosign-ecs-function
+	go build -o cosign-ecs-function ./cosign-ecs-function
 
-key_gen:
-	cosign generate-key-pair --kms awskms:///alias/$(NAME) $(ACCOUNT_ID).dkr.ecr.$(AWS_REGION).amazonaws.com/$(IMAGE):$(VERSION)
+clean:
+	rm -f ./cosign-ecs-function $(PACKAGED_TEMPLATE)
 
-verify: key_gen
-	cosign verify --key cosign.pub $(ACCOUNT_ID).dkr.ecr.$(AWS_REGION).amazonaws.com/$(IMAGE):$(VERSION)
+lambda:
+	GOOS=linux GOARCH=amd64 $(MAKE) go_build
 
 sam_init:
 	aws s3 mb s3://chainguard-${NAME}
 
-sam_build:
+sam_build: lambda
 	sam build
 
-sam_deploy: sam_build
-	sam deploy --template-file template.yml --stack-name cosign-verify --capabilities CAPABILITY_IAM --s3-bucket chainguard-${NAME}
+sam_package: sam_build
+	sam package --template-file template.yml --s3-bucket chainguard-$(NAME) --output-template-file $(PACKAGED_TEMPLATE)
+
+sam_deploy: sam_package
+	sam deploy --template-file template.yml --stack-name cosign-verify --template-file $(PACKAGED_TEMPLATE) --capabilities CAPABILITY_IAM --s3-bucket chainguard-${NAME}
 
 sam_local: sam_build
 	sam local invoke -e event.json
