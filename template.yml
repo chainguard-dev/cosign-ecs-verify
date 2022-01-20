@@ -65,11 +65,14 @@ Resources:
               source:
                 - aws.ecs
               detail-type:
-                - "ECS Task State Change"
+                - ECS Task State Change
+                - ECS Container Instance State Change
               detail:
                 desiredStatus:
-                  - "StartTask"
-                  - "RunTask"
+                  - RUNNING
+                  - PENDING
+                  - ACTIVATING
+                  - PROVISIONING
   TeamNotificationTopic:
     Type: AWS::SNS::Topic
     Properties:

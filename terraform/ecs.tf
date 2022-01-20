@@ -8,7 +8,8 @@ resource "aws_cloudwatch_log_group" "example" {
 }
 
 resource "aws_ecs_cluster" "example" {
-  name = "${var.name}-cluster"
+  name               = "${var.name}-cluster"
+  capacity_providers = ["FARGATE"]
 
   configuration {
     execute_command_configuration {
@@ -34,6 +35,12 @@ resource "aws_iam_role" "example" {
       "Effect": "Allow",
       "Principal": {
         "Service": "ecs.amazonaws.com"
+      },
+      "Action": "sts:AssumeRole"
+    },{
+      "Effect": "Allow",
+      "Principal": {
+        "Service": "ecs-tasks.amazonaws.com"
       },
       "Action": "sts:AssumeRole"
     }
@@ -97,13 +104,20 @@ resource "aws_ecs_service" "example" {
   cluster         = aws_ecs_cluster.example.id
   task_definition = aws_ecs_task_definition.example.arn
   desired_count   = 1
+  network_configuration {
+    subnets = ["subnet-025584ff1ed9dcf8d"]
+  }
 }
 
 
 resource "aws_ecs_task_definition" "example" {
-  family        = "service"
-  network_mode  = "none"
-  task_role_arn = aws_iam_role.example.arn
+  family                   = "service"
+  network_mode             = "awsvpc"
+  requires_compatibilities = ["FARGATE"]
+  task_role_arn            = aws_iam_role.example.arn
+  execution_role_arn       = aws_iam_role.example.arn
+  cpu                      = 1024
+  memory                   = 2048
   container_definitions = jsonencode([
     {
       name      = "${var.name}-container"
