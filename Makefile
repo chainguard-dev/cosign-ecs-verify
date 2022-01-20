@@ -1,4 +1,4 @@
-NAME ?=cosign-ecs
+NAME ?= cosign-ecs
 IMAGE ?= distroless-base
 VERSION ?= 0.0.1
 GOLANG_VERSION ?= 1.17.2
@@ -30,15 +30,19 @@ tf_get:
 
 tf_plan:
 	cd terraform/ && \
-	terraform plan -var="name=${NAME}" -out=plan.out
+	terraform plan -var="name=${NAME}" -var="image_name=${IMAGE}" -var="image_version=${VERSION}"  -out=plan.out
 
 tf_apply:
 	cd terraform/ && \
-	terraform apply -var="name=${NAME}" -auto-approve
+	terraform apply -var="name=${NAME}" -var="image_name=${IMAGE}" -var="image_version=${VERSION}" -auto-approve
+
+tf_fmt:
+	cd terraform/ && \
+	terraform fmt
 
 tf_destroy:
 	cd terraform/ && \
-	terraform destroy -var="name=${NAME}" -auto-approve
+	terraform destroy -var="name=${NAME}" -var="image_name=${IMAGE}" -var="image_version=${VERSION}"  -auto-approve
 
 sign:
 	cosign sign --key awskms:///alias/$(NAME) $(ACCOUNT_ID).dkr.ecr.$(AWS_REGION).amazonaws.com/$(IMAGE):$(VERSION)
@@ -49,12 +53,14 @@ key_gen:
 verify: key_gen
 	cosign verify --key cosign.pub $(ACCOUNT_ID).dkr.ecr.$(AWS_REGION).amazonaws.com/$(IMAGE):$(VERSION)
 
-build:
+sam_init:
+	aws s3 mb s3://chainguard-${NAME}
+
+sam_build:
 	sam build
 
-deploy:
-	sam deploy
+sam_deploy: sam_build
+	sam deploy --template-file template.yml --stack-name cosign-verify --capabilities CAPABILITY_IAM --s3-bucket chainguard-${NAME}
 
-local:
+sam_local: sam_build
 	sam local invoke -e event.json
-

@@ -29,6 +29,7 @@ func handler(event events.CloudWatchEvent) {
 	log.Printf("taskArn: %v\n", taskArn)
 	log.Printf("taskDefinitionArn: %v\n", taskDefinitionArn)
 	log.Printf("accountId: %v\n", accountId)
+
 }
 
 func main() {
