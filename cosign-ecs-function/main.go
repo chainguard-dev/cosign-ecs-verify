@@ -4,57 +4,41 @@ import (
 	"encoding/json"
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/awserr"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/sts"
 	"log"
 )
 
 func handler(event events.CloudWatchEvent) {
 
-	var eventBridgeECSTaskStatusChangeEventDetail EventBridgeECSTaskStatusChangeEventDetail
-	err := json.Unmarshal(event.Detail, &eventBridgeECSTaskStatusChangeEventDetail)
+	var eventDetail Detail
+	err := json.Unmarshal(event.Detail, &eventDetail)
 	if err != nil {
-		log.Fatal("error during event unmarshalling:", err)
+		log.Fatalf("[ERROR] %v error during event unmarshalling: %v", event.ID, err)
 	}
 
-	clusterArn := eventBridgeECSTaskStatusChangeEventDetail.ClusterArn
-	taskArn := eventBridgeECSTaskStatusChangeEventDetail.TaskArn
-	taskDefinitionArn := eventBridgeECSTaskStatusChangeEventDetail.TaskDefinitionArn
+	lambdaEvent := LambdaEvent{
+		Version:    event.Version,
+		ID:         event.ID,
+		DetailType: event.DetailType,
+		Source:     event.Source,
+		Account:    event.AccountID,
+		Time:       event.Time,
+		Region:     event.Region,
+		Resources:  event.Resources,
+		Detail:     eventDetail,
+	}
 
-	var accountId = getAccountId()
+	log.Printf("Cluster: %v\n", lambdaEvent.Detail.ClusterArn)
+	log.Printf("taskArn: %v\n", lambdaEvent.Detail.TaskArn)
+	log.Printf("taskDefinitionArn: %v\n", lambdaEvent.Detail.TaskDefinitionArn)
+	log.Printf("accountId: %v\n", lambdaEvent.Account)
 
-	log.Printf("Cluster: %v\n", clusterArn)
-	log.Printf("taskArn: %v\n", taskArn)
-	log.Printf("taskDefinitionArn: %v\n", taskDefinitionArn)
-	log.Printf("accountId: %v\n", accountId)
+	for i := 0; i < len(lambdaEvent.Detail.Containers); i++ {
+		log.Printf("container Image %v : %v", i, lambdaEvent.Detail.Containers[i].Image)
+		Verify(lambdaEvent.Detail.Containers[i].Image, lambdaEvent.Region, lambdaEvent.Account)
+	}
 
 }
 
 func main() {
 	lambda.Start(handler)
-}
-
-func getAccountId() string {
-	svc := sts.New(session.New())
-	input := &sts.GetCallerIdentityInput{}
-
-	result, err := svc.GetCallerIdentity(input)
-	if err != nil {
-		if awsErr, ok := err.(awserr.Error); ok {
-			log.Println(awsErr.Error())
-		} else {
-			log.Println(err.Error())
-		}
-		log.Fatal("Error getting account id")
-	}
-
-	return aws.StringValue(result.Account)
-}
-
-type EventBridgeECSTaskStatusChangeEventDetail struct {
-	ClusterArn        string `json:"clusterArn"`
-	TaskArn           string `json:"taskArn"`
-	TaskDefinitionArn string `json:"taskDefinitionArn"`
 }

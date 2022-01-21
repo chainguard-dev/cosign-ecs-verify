@@ -69,9 +69,7 @@ resource "aws_iam_role_policy" "example" {
     {
       "Effect": "Allow",
       "Action": [
-        "ecr:GetAuthorizationToken",
-        "ecr:Describe*",
-        "ecr:List*"
+        "ecr:*"
       ],
       "Resource": "*"
     },
@@ -98,7 +96,6 @@ resource "aws_iam_role_policy" "example" {
 EOF
 }
 
-
 resource "aws_ecs_service" "example" {
   name            = "${var.name}-service"
   cluster         = aws_ecs_cluster.example.id
@@ -109,9 +106,8 @@ resource "aws_ecs_service" "example" {
   }
 }
 
-
 resource "aws_ecs_task_definition" "example" {
-  family                   = "service"
+  family                   = "${var.name}-task-definition"
   network_mode             = "awsvpc"
   requires_compatibilities = ["FARGATE"]
   task_role_arn            = aws_iam_role.example.arn

@@ -19,6 +19,7 @@ Resources:
       Environment:
         Variables:
           SNS_TOPIC_ARN: !Ref TeamNotificationTopic
+          COSIGN_KEY: cosign-ecs
       Tracing: Active
       Policies:
       - AWSXrayWriteOnlyAccess
