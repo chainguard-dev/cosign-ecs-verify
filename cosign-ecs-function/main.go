@@ -32,11 +32,19 @@ func handler(event events.CloudWatchEvent) {
 	log.Printf("taskDefinitionArn: %v\n", lambdaEvent.Detail.TaskDefinitionArn)
 	log.Printf("accountId: %v\n", lambdaEvent.Account)
 
+	var verified bool
 	for i := 0; i < len(lambdaEvent.Detail.Containers); i++ {
 		log.Printf("container Image %v : %v", i, lambdaEvent.Detail.Containers[i].Image)
-		Verify(lambdaEvent.Detail.Containers[i].Image, lambdaEvent.Region, lambdaEvent.Account)
+		verified, err = Verify(lambdaEvent.Detail.Containers[i].Image, lambdaEvent.Region, lambdaEvent.Account)
+		if err != nil {
+			log.Printf("[ERROR] %v error Verifing image: %v %v", event.ID, verified, err)
+		}
+		if !verified {
+			log.Println("NOT VERIFIED")
+		} else {
+			log.Println("VERIFIED")
+		}
 	}
-
 }
 
 func main() {

@@ -19,7 +19,8 @@ Resources:
       Environment:
         Variables:
           SNS_TOPIC_ARN: !Ref TeamNotificationTopic
-          COSIGN_KEY: cosign-ecs
+          COSIGN_KEY: cosign-aws
+          REPO_NAME: distroless-base
       Tracing: Active
       Policies:
       - AWSXrayWriteOnlyAccess
@@ -58,6 +59,18 @@ Resources:
           - kms:GenerateDataKey
           - kms:Decrypt
           Resource: !GetAtt TeamNotificationTopicKey.Arn
+      - Statement:
+        - Sid: ECRPolicy
+          Effect: Allow
+          Action:
+            - ecr:*
+          Resource: !Sub 'arn:aws:ecr:${AWS::Region}:${AWS::AccountId}:repository/distroless-base'
+      - Statement:
+          - Sid: COSIGNKMSPolicy
+            Effect: Allow
+            Action:
+              - kms:*
+            Resource: !Sub 'arn:aws:kms:${AWS::Region}:${AWS::AccountId}:alias/cosign-aws'
       Events:
         Trigger:
           Type: CloudWatchEvent 

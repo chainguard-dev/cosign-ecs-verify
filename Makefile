@@ -46,19 +46,18 @@ tf_destroy:
 	cd terraform/ && \
 	terraform destroy -var="name=${NAME}" -var="image_name=${IMAGE}" -var="image_version=${VERSION}"  -auto-approve
 
-go_build: ./cosign-ecs-function
-	go build -o cosign-ecs-function ./cosign-ecs-function
+
+go_build:
+	cd ./cosign-ecs-function && go mod tidy && \
+	GOOS=linux GOARCH=amd64 go build -o cosign-ecs-function .
 
 clean:
-	rm -f ./cosign-ecs-function ${PACKAGED_TEMPLATE}
-
-lambda:
-	GOOS=linux GOARCH=amd64 ${MAKE} go_build
+	rm -f ./cosign-ecs-function/cosign-ecs-function ${PACKAGED_TEMPLATE}
 
 sam_init:
 	aws s3 mb s3://chainguard-${NAME}
 
-sam_build: lambda
+sam_build: go_build
 	sam build
 
 sam_package: sam_build
