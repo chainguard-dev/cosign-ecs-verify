@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"crypto"
 	"errors"
 	"fmt"
 	"github.com/aws/aws-sdk-go/aws"
@@ -18,8 +17,6 @@ import (
 	"github.com/sigstore/cosign/pkg/cosign"
 	ociremote "github.com/sigstore/cosign/pkg/oci/remote"
 	sigs "github.com/sigstore/cosign/pkg/signature"
-	"github.com/sigstore/sigstore/pkg/signature"
-
 	"log"
 	"os"
 )
@@ -33,11 +30,12 @@ func Verify(containerImage, region, accountID string) (bool, error) {
 	if len(kmsKeyAlias) == 0 {
 		return false, errors.New("KMS Alias is empty")
 	}
-	log.Printf("Key Alias: %v", kmsKeyAlias)
+	log.Printf("[INFO] Key Alias: %v", kmsKeyAlias)
 
 	keyID := fmt.Sprintf("arn:aws:kms:%v:%v:alias/%v", region, accountID, kmsKeyAlias)
+	log.Printf("[INFO] Key ID: %v", keyID)
 	GetPublicKeyInput := kms.GetPublicKeyInput{
-		KeyId: &keyID,
+		KeyId: aws.String(keyID),
 	}
 
 	mySession := session.Must(session.NewSession())
@@ -72,7 +70,7 @@ func Verify(containerImage, region, accountID string) (bool, error) {
 		} else {
 			// Print the error, cast err to awserr.Error to get the Code and
 			// Message from an error.
-			log.Println(err.Error())
+			log.Printf("[EEROR] Accessing Key %v", err.Error())
 		}
 		return false, err
 	}
@@ -80,24 +78,9 @@ func Verify(containerImage, region, accountID string) (bool, error) {
 	log.Printf("KMS Key Info: %v", result)
 	ctx := context.TODO()
 
-	var pubKey signature.Verifier
-	pubKey, err = sigs.PublicKeyFromKeyRefWithHashAlgo(ctx, fmt.Sprintf("awskms:///alias//%v", kmsKeyAlias), crypto.SHA256)
+	pubKey, err := sigs.LoadPublicKey(ctx, fmt.Sprintf("awskms:///alias//%v", kmsKeyAlias))
 	if err != nil {
 		return false, err
-	}
-	var Keychain = authn.NewKeychainFromHelper(ecrlogin.ECRHelper{ClientFactory: api.DefaultClientFactory{}})
-
-	//var remoteOp = []ociremote.Option{
-	//	ociremote.WithRemoteOptions(remote.WithAuthFromKeychain(authn.NewMultiKeychain(authn.DefaultKeychain, Keychain)), remote.WithContext(ctx)),
-	//}
-
-	opts := []remote.Option{
-		remote.WithAuthFromKeychain(Keychain),
-		remote.WithContext(ctx),
-	}
-	co := &cosign.CheckOpts{
-		RegistryClientOpts: []ociremote.Option{ociremote.WithRemoteOptions(opts...)},
-		SigVerifier:        pubKey,
 	}
 
 	ref, err := name.ParseReference(containerImage)
@@ -105,7 +88,37 @@ func Verify(containerImage, region, accountID string) (bool, error) {
 		return false, err
 	}
 	repoName := os.Getenv("REPO_NAME")
-	doesImageExist(repoName)
+	imageIDs, _ := doesImageExist(repoName)
+	imageDigestByAWS, _ := findImageDigestByTag(imageIDs, "0.0.1")
+	ecrHelper := ecrlogin.ECRHelper{ClientFactory: api.DefaultClientFactory{}}
+
+	img, err := remote.Get(ref, remote.WithAuthFromKeychain(authn.NewKeychainFromHelper(ecrHelper)))
+	if err != nil {
+		log.Printf("Error Getting Ref %v %v", ref, err)
+	}
+
+	log.Printf("Image Manifest %v", string(img.Manifest))
+
+	image, _ := img.Image()
+	digest, _ := image.Digest()
+	log.Printf("Remote Get Image Digest %v", digest)
+	log.Printf("AWS SDK Image Digest: %v", imageDigestByAWS)
+	if digest.String() == imageDigestByAWS {
+		log.Printf("Remote has and AWS has are same!!!!!")
+	} else {
+		log.Printf("Failure")
+	}
+
+	opts := []remote.Option{
+		remote.WithAuthFromKeychain(authn.NewKeychainFromHelper(ecrHelper)),
+		remote.WithContext(ctx),
+	}
+
+	co := &cosign.CheckOpts{
+		ClaimVerifier:      cosign.SimpleClaimVerifier,
+		RegistryClientOpts: []ociremote.Option{ociremote.WithRemoteOptions(opts...)},
+		SigVerifier:        pubKey,
+	}
 
 	//Verify Image
 	log.Println("Verifying sig")
@@ -114,7 +127,7 @@ func Verify(containerImage, region, accountID string) (bool, error) {
 	return verified, err
 }
 
-func doesImageExist(imageName string) {
+func doesImageExist(imageName string) ([]*ecr.ImageIdentifier, error) {
 	svc := ecr.New(session.New())
 	input := &ecr.ListImagesInput{
 		RepositoryName: aws.String(imageName),
@@ -138,8 +151,19 @@ func doesImageExist(imageName string) {
 			// Message from an error.
 			fmt.Println(err.Error())
 		}
-		return
+		return nil, err
 	}
 
-	fmt.Println(result)
+	fmt.Println(result.ImageIds)
+
+	return result.ImageIds, nil
+}
+
+func findImageDigestByTag(image []*ecr.ImageIdentifier, tag string) (string, error) {
+	for i := 0; i < len(image); i++ {
+		if *image[i].ImageTag == tag {
+			return *image[i].ImageDigest, nil
+		}
+	}
+	return "", errors.New("image digest not found with provided tag")
 }

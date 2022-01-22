@@ -37,7 +37,7 @@ func handler(event events.CloudWatchEvent) {
 		log.Printf("container Image %v : %v", i, lambdaEvent.Detail.Containers[i].Image)
 		verified, err = Verify(lambdaEvent.Detail.Containers[i].Image, lambdaEvent.Region, lambdaEvent.Account)
 		if err != nil {
-			log.Printf("[ERROR] %v error Verifing image: %v %v", event.ID, verified, err)
+			log.Printf("[ERROR] %v Verifing image: %v %v", event.ID, verified, err)
 		}
 		if !verified {
 			log.Println("NOT VERIFIED")

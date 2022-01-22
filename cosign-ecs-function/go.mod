@@ -8,7 +8,6 @@ require (
 	github.com/awslabs/amazon-ecr-credential-helper/ecr-login v0.0.0-20211215200129-69c85dc22db6
 	github.com/google/go-containerregistry v0.7.1-0.20220105185611-c6366444aa46
 	github.com/sigstore/cosign v1.4.1
-	github.com/sigstore/sigstore v1.0.2-0.20211203233310-c8e7f70eab4e
 )
 
 require (
@@ -143,6 +142,7 @@ require (
 	github.com/secure-systems-lab/go-securesystemslib v0.2.0 // indirect
 	github.com/shibumi/go-pathspec v1.2.0 // indirect
 	github.com/sigstore/rekor v0.3.1-0.20211203233407-3278f72b78bd // indirect
+	github.com/sigstore/sigstore v1.0.2-0.20211203233310-c8e7f70eab4e // indirect
 	github.com/sirupsen/logrus v1.8.1 // indirect
 	github.com/spf13/afero v1.6.0 // indirect
 	github.com/spf13/cast v1.4.1 // indirect

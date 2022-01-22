@@ -46,6 +46,10 @@ tf_destroy:
 	cd terraform/ && \
 	terraform destroy -var="name=${NAME}" -var="image_name=${IMAGE}" -var="image_version=${VERSION}"  -auto-approve
 
+tf_refresh:
+	cd terraform/ && \
+	terraform refresh -var="name=${NAME}" -var="image_name=${IMAGE}" -var="image_version=${VERSION}"
+
 
 go_build:
 	cd ./cosign-ecs-function && go mod tidy && \
