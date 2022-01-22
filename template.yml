@@ -22,6 +22,7 @@ Resources:
           COSIGN_KEY: cosign-aws
           REPO_NAME: distroless-base
       Tracing: Active
+      MemorySize: 512
       Policies:
       - AWSXrayWriteOnlyAccess
       - AWSLambdaBasicExecutionRole
@@ -83,7 +84,7 @@ Resources:
             - kms:GenerateDataKey
             - kms:Decrypt
             - kms:DescribeKey
-            Resource: !Sub 'arn:aws:kms:${AWS::Region}:${AWS::AccountId}:alias/cosign-aws'
+            Resource: !Sub 'arn:aws:kms:us-west-2:452336408843:key/29c2518c-e6d3-477d-af0d-2dc33ebe0520'
       Events:
         Trigger:
           Type: CloudWatchEvent 

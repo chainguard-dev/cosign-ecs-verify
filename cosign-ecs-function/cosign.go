@@ -122,7 +122,9 @@ func Verify(containerImage, region, accountID string) (bool, error) {
 	//Verify Image
 	log.Println("[INFO] COSIGN Verifying sig")
 	_, verified, err := cosign.VerifyImageSignatures(ctx, ref, co)
-
+	if err != nil {
+		log.Printf("[ERROR] COSIGN error: %v", err)
+	}
 	return verified, err
 }
 
@@ -137,24 +139,21 @@ func doesImageExist(imageName string) ([]*ecr.ImageIdentifier, error) {
 		if aerr, ok := err.(awserr.Error); ok {
 			switch aerr.Code() {
 			case ecr.ErrCodeServerException:
-				fmt.Println(ecr.ErrCodeServerException, aerr.Error())
+				log.Println(ecr.ErrCodeServerException, aerr.Error())
 			case ecr.ErrCodeInvalidParameterException:
-				fmt.Println(ecr.ErrCodeInvalidParameterException, aerr.Error())
+				log.Println(ecr.ErrCodeInvalidParameterException, aerr.Error())
 			case ecr.ErrCodeRepositoryNotFoundException:
-				fmt.Println(ecr.ErrCodeRepositoryNotFoundException, aerr.Error())
+				log.Println(ecr.ErrCodeRepositoryNotFoundException, aerr.Error())
 			default:
-				fmt.Println(aerr.Error())
+				log.Println(aerr.Error())
 			}
 		} else {
 			// Print the error, cast err to awserr.Error to get the Code and
 			// Message from an error.
-			fmt.Println(err.Error())
+			log.Println(err.Error())
 		}
 		return nil, err
 	}
-
-	fmt.Println(result.ImageIds)
-
 	return result.ImageIds, nil
 }
 

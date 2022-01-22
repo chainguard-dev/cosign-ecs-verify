@@ -27,22 +27,21 @@ func handler(event events.CloudWatchEvent) {
 		Detail:     eventDetail,
 	}
 
-	log.Printf("Cluster: %v\n", lambdaEvent.Detail.ClusterArn)
-	log.Printf("taskArn: %v\n", lambdaEvent.Detail.TaskArn)
-	log.Printf("taskDefinitionArn: %v\n", lambdaEvent.Detail.TaskDefinitionArn)
-	log.Printf("accountId: %v\n", lambdaEvent.Account)
+	log.Printf("[INFO] Cluster: %v\n", lambdaEvent.Detail.ClusterArn)
+	log.Printf("[INFO] taskArn: %v\n", lambdaEvent.Detail.TaskArn)
+	log.Printf("[INFO] taskDefinitionArn: %v\n", lambdaEvent.Detail.TaskDefinitionArn)
+	log.Printf("[INFO] accountId: %v\n", lambdaEvent.Account)
 
-	var verified bool
 	for i := 0; i < len(lambdaEvent.Detail.Containers); i++ {
-		log.Printf("container Image %v : %v", i, lambdaEvent.Detail.Containers[i].Image)
-		verified, err = Verify(lambdaEvent.Detail.Containers[i].Image, lambdaEvent.Region, lambdaEvent.Account)
+		log.Printf("[INFO] Container Image %v : %v", i, lambdaEvent.Detail.Containers[i].Image)
+		verified, err := Verify(lambdaEvent.Detail.Containers[i].Image, lambdaEvent.Region, lambdaEvent.Account)
 		if err != nil {
-			log.Printf("[ERROR] %v Verifing image: %v %v", event.ID, verified, err)
+			log.Printf("[ERROR] Verifing image: %v %v", verified, err)
 		}
 		if !verified {
-			log.Println("NOT VERIFIED")
+			log.Println("[INFO] NOT VERIFIED")
 		} else {
-			log.Println("VERIFIED")
+			log.Println("[INFO] VERIFIED")
 		}
 	}
 }
