@@ -60,16 +60,29 @@ Resources:
           - kms:Decrypt
           Resource: !GetAtt TeamNotificationTopicKey.Arn
       - Statement:
+          - Sid: ECRPolicy2
+            Effect: Allow
+            Action:
+              - ecr:*
+            Resource:
+              - '*'
+      - Statement:
         - Sid: ECRPolicy
           Effect: Allow
           Action:
-            - ecr:*
+            - ecr:GetAuthorizationToken
+            - ecr:ListImages
+            - ecr:Get*
+            - ecr:Describe*
           Resource: !Sub 'arn:aws:ecr:${AWS::Region}:${AWS::AccountId}:repository/distroless-base'
       - Statement:
           - Sid: COSIGNKMSPolicy
             Effect: Allow
             Action:
-              - kms:*
+            - kms:GetPublicKey
+            - kms:GenerateDataKey
+            - kms:Decrypt
+            - kms:DescribeKey
             Resource: !Sub 'arn:aws:kms:${AWS::Region}:${AWS::AccountId}:alias/cosign-aws'
       Events:
         Trigger:

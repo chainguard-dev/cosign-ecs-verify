@@ -75,10 +75,10 @@ func Verify(containerImage, region, accountID string) (bool, error) {
 		return false, err
 	}
 
-	log.Printf("KMS Key Info: %v", result)
+	log.Printf("[INFO] KMS Key Info: %v", result)
 	ctx := context.TODO()
 
-	pubKey, err := sigs.LoadPublicKey(ctx, fmt.Sprintf("awskms:///alias//%v", kmsKeyAlias))
+	pubKey, err := sigs.LoadPublicKey(ctx, fmt.Sprintf("awskms:///alias/%v", kmsKeyAlias))
 	if err != nil {
 		return false, err
 	}
@@ -90,29 +90,28 @@ func Verify(containerImage, region, accountID string) (bool, error) {
 	repoName := os.Getenv("REPO_NAME")
 	imageIDs, _ := doesImageExist(repoName)
 	imageDigestByAWS, _ := findImageDigestByTag(imageIDs, "0.0.1")
-	ecrHelper := ecrlogin.ECRHelper{ClientFactory: api.DefaultClientFactory{}}
 
+	ecrHelper := ecrlogin.ECRHelper{ClientFactory: api.DefaultClientFactory{}}
 	img, err := remote.Get(ref, remote.WithAuthFromKeychain(authn.NewKeychainFromHelper(ecrHelper)))
 	if err != nil {
-		log.Printf("Error Getting Ref %v %v", ref, err)
+		log.Printf("[ERROR] REMOTE GET Error Getting Ref %v %v", ref, err)
 	}
 
-	log.Printf("Image Manifest %v", string(img.Manifest))
+	log.Printf("[INFO] REMOTE GET Image Manifest %v", string(img.Manifest))
 
 	image, _ := img.Image()
 	digest, _ := image.Digest()
-	log.Printf("Remote Get Image Digest %v", digest)
-	log.Printf("AWS SDK Image Digest: %v", imageDigestByAWS)
+
+	log.Printf("[INFO] REMOTE GET Remote Get Image Digest %v", digest)
+	log.Printf("[INFO] AWS SDK Image Digest: %v", imageDigestByAWS)
+
 	if digest.String() == imageDigestByAWS {
-		log.Printf("Remote has and AWS has are same!!!!!")
+		log.Printf("[INFO] Remote has and AWS has are same!!!!!")
 	} else {
-		log.Printf("Failure")
+		log.Printf("[ERROR] Remote Get and AWS Digests are not the same")
 	}
 
-	opts := []remote.Option{
-		remote.WithAuthFromKeychain(authn.NewKeychainFromHelper(ecrHelper)),
-		remote.WithContext(ctx),
-	}
+	opts := []remote.Option{remote.WithAuthFromKeychain(authn.NewKeychainFromHelper(ecrHelper))}
 
 	co := &cosign.CheckOpts{
 		ClaimVerifier:      cosign.SimpleClaimVerifier,
@@ -121,7 +120,7 @@ func Verify(containerImage, region, accountID string) (bool, error) {
 	}
 
 	//Verify Image
-	log.Println("Verifying sig")
+	log.Println("[INFO] COSIGN Verifying sig")
 	_, verified, err := cosign.VerifyImageSignatures(ctx, ref, co)
 
 	return verified, err

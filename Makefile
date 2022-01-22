@@ -1,6 +1,6 @@
 NAME ?= cosign-ecs
 IMAGE ?= distroless-base
-VERSION ?= 0.0.3
+VERSION ?= 0.0.1
 GOLANG_VERSION ?= 1.17.2
 AWS_REGION ?= us-west-2
 AWS_DEFAULT_REGION ?= us-west-2
@@ -49,7 +49,6 @@ tf_destroy:
 tf_refresh:
 	cd terraform/ && \
 	terraform refresh -var="name=${NAME}" -var="image_name=${IMAGE}" -var="image_version=${VERSION}"
-
 
 go_build:
 	cd ./cosign-ecs-function && go mod tidy && \
