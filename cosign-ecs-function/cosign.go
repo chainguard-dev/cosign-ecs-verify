@@ -40,7 +40,7 @@ func Verify(containerImage, region, accountID string) (bool, error) {
 
 	mySession := session.Must(session.NewSession())
 	svc := kms.New(mySession)
-	result, err := svc.GetPublicKey(&GetPublicKeyInput)
+	kmsResult, err := svc.GetPublicKey(&GetPublicKeyInput)
 	if err != nil {
 		if aerr, ok := err.(awserr.Error); ok {
 			switch aerr.Code() {
@@ -75,10 +75,10 @@ func Verify(containerImage, region, accountID string) (bool, error) {
 		return false, err
 	}
 
-	log.Printf("[INFO] KMS Key Info: %v", result)
+	log.Printf("[INFO] KMS Key Info: %v", kmsResult)
 	ctx := context.TODO()
 
-	pubKey, err := sigs.LoadPublicKey(ctx, fmt.Sprintf("awskms:///alias/%v", kmsKeyAlias))
+	pubKey, err := sigs.LoadPublicKey(ctx, fmt.Sprintf("awskms:///%s", *kmsResult.KeyId))
 	if err != nil {
 		return false, err
 	}
@@ -111,7 +111,10 @@ func Verify(containerImage, region, accountID string) (bool, error) {
 		log.Printf("[ERROR] Remote Get and AWS Digests are not the same")
 	}
 
-	opts := []remote.Option{remote.WithAuthFromKeychain(authn.NewKeychainFromHelper(ecrHelper))}
+	opts := []remote.Option{
+		remote.WithAuthFromKeychain(authn.NewKeychainFromHelper(ecrHelper)),
+		remote.WithContext(ctx),
+	}
 
 	co := &cosign.CheckOpts{
 		ClaimVerifier:      cosign.SimpleClaimVerifier,
