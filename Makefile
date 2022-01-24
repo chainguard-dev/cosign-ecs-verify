@@ -10,6 +10,7 @@ COSIGN_ROLE_NAME ?= "${NAME}-codebuild"
 ACCOUNT_ID ?= $(shell aws sts get-caller-identity --query Account --output text)
 PACKAGED_TEMPLATE = packaged.yml
 EVENT ?= event.json
+KEY_NAME = cosign-aws
 
 export
 
@@ -72,5 +73,23 @@ sam_deploy: sam_package
 sam_local: sam_build
 	sam local invoke -e ${EVENT}
 
+sam_local_debug: sam_build
+	sam local invoke -e ${EVENT} \
+	--debug \
+      --template template.yml
+
 start_task:
 	aws ecs start-task --cluster ${NAME}-cluster --task-definition service
+
+sign: ecr_auth
+	cosign sign --key awskms:///alias/$(NAME) $(ACCOUNT_ID).dkr.ecr.$(AWS_REGION).amazonaws.com/$(IMAGE):$(VERSION)
+
+key_gen:
+	cosign generate-key-pair --kms awskms:///alias/$(KEY_NAME) $(ACCOUNT_ID).dkr.ecr.$(AWS_REGION).amazonaws.com/$(IMAGE):$(VERSION)
+
+verify: key_gen ecr_auth
+	cosign verify --key cosign.pub $(ACCOUNT_ID).dkr.ecr.$(AWS_REGION).amazonaws.com/$(IMAGE):$(VERSION)
+
+.SILENT: ecr_auth
+ecr_auth:
+	docker login --username AWS -p $(shell aws ecr get-login-password --region $(AWS_REGION) ) $(ACCOUNT_ID).dkr.ecr.$(AWS_REGION).amazonaws.com

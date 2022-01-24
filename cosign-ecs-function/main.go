@@ -38,10 +38,11 @@ func handler(event events.CloudWatchEvent) {
 		if err != nil {
 			log.Printf("[ERROR] Verifing image: %v %v", verified, err)
 		}
-		if !verified {
-			log.Println("[INFO] NOT VERIFIED")
-		} else {
+		if verified {
 			log.Println("[INFO] VERIFIED")
+		} else {
+			log.Println("[INFO] NOT VERIFIED")
+			//Stop Tasks etc
 		}
 	}
 }

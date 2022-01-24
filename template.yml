@@ -16,6 +16,7 @@ Resources:
       CodeUri: cosign-ecs-function/
       Handler: cosign-ecs-function
       Runtime: go1.x
+      Timeout: 20
       Environment:
         Variables:
           SNS_TOPIC_ARN: !Ref TeamNotificationTopic

@@ -92,6 +92,7 @@ func Verify(containerImage, region, accountID string) (bool, error) {
 	imageDigestByAWS, _ := findImageDigestByTag(imageIDs, "0.0.1")
 
 	ecrHelper := ecrlogin.ECRHelper{ClientFactory: api.DefaultClientFactory{}}
+
 	img, err := remote.Get(ref, remote.WithAuthFromKeychain(authn.NewKeychainFromHelper(ecrHelper)))
 	if err != nil {
 		log.Printf("[ERROR] REMOTE GET Error Getting Ref %v %v", ref, err)
