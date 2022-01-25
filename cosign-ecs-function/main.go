@@ -41,7 +41,8 @@ func handler(event events.CloudWatchEvent) {
 		if verified {
 			log.Println("[INFO] VERIFIED")
 		} else {
-			log.Println("[INFO] NOT VERIFIED")
+			log.Printf("[INFO] %v NOT VERIFIED", lambdaEvent.Detail.Containers[i].Image)
+			log.Printf("[INFO] Stopping Task %v", lambdaEvent.Detail.TaskArn)
 			//Stop Tasks etc
 			err := stopTask(lambdaEvent.Detail.ClusterArn, lambdaEvent.Detail.TaskArn)
 			if err != nil {

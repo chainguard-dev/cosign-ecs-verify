@@ -80,7 +80,7 @@ sam_local_debug: sam_build
       --template template.yml
 
 run_signed_task:
-	aws ecs run-task --task-definition "arn:aws:ecs:us-west-2:$(ACCOUNT_ID):task-definition/cosign-ecs-task-definition:5" --cluster $(NAME)-cluster --network-configuration "awsvpcConfiguration={subnets=[$(SUBNET_ID)],securityGroups=[$(SEC_GROUP_ID)],assignPublicIp=ENABLED}" --launch-type FARGATE
+	aws ecs run-task --task-definition "arn:aws:ecs:us-west-2:$(ACCOUNT_ID):task-definition/cosign-ecs-task-definition:2" --cluster $(NAME)-cluster --network-configuration "awsvpcConfiguration={subnets=[$(SUBNET_ID)],securityGroups=[$(SEC_GROUP_ID)],assignPublicIp=ENABLED}" --launch-type FARGATE
 
 run_unsigned_task:
 	aws ecs run-task --task-definition "arn:aws:ecs:us-west-2:$(ACCOUNT_ID):task-definition/cosign-ecs-task-definition:7" --cluster $(NAME)-cluster --network-configuration "awsvpcConfiguration={subnets=[$(SUBNET_ID)],securityGroups=[$(SEC_GROUP_ID)],assignPublicIp=ENABLED}" --launch-type FARGATE

@@ -10,6 +10,21 @@ Globals:
     Timeout: 5
 
 Resources:
+  TeamNotificationTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      KmsMasterKeyId: !GetAtt TeamNotificationTopicKey.Arn
+  TeamNotificationTopicKey:
+    Type: AWS::KMS::Key
+    Properties:
+      KeyPolicy:
+        Statement:
+          - Action: kms:*
+            Effect: Allow
+            Principal:
+              AWS: !Sub 'arn:aws:iam::${AWS::AccountId}:root'
+            Resource: '*'
+      EnableKeyRotation: true
   ECSApprovedContainerRegistyFunction:
     Type: AWS::Serverless::Function 
     Properties:
@@ -78,14 +93,11 @@ Resources:
             - ecr:Describe*
           Resource: !Sub 'arn:aws:ecr:${AWS::Region}:${AWS::AccountId}:repository/distroless-base'
       - Statement:
-          - Sid: COSIGNKMSPolicy
+          - Sid: SNSPublishPolicy
             Effect: Allow
             Action:
-            - kms:GetPublicKey
-            - kms:GenerateDataKey
-            - kms:Decrypt
-            - kms:DescribeKey
-            Resource: !Sub 'arn:aws:kms:us-west-2:452336408843:key/29c2518c-e6d3-477d-af0d-2dc33ebe0520'
+              - sns:Publish
+            Resource: !Ref TeamNotificationTopic
       Events:
         Trigger:
           Type: CloudWatchEvent 
@@ -102,18 +114,3 @@ Resources:
                   - PENDING
                   - ACTIVATING
                   - PROVISIONING
-  TeamNotificationTopic:
-    Type: AWS::SNS::Topic
-    Properties:
-      KmsMasterKeyId: !GetAtt TeamNotificationTopicKey.Arn
-  TeamNotificationTopicKey:
-    Type: AWS::KMS::Key
-    Properties:
-      KeyPolicy:
-        Statement:
-          - Action: kms:*
-            Effect: Allow
-            Principal:
-              AWS: !Sub 'arn:aws:iam::${AWS::AccountId}:root' 
-            Resource: '*'
-      EnableKeyRotation: true
