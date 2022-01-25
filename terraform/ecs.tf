@@ -96,17 +96,7 @@ resource "aws_iam_role_policy" "example" {
 EOF
 }
 
-resource "aws_ecs_service" "example" {
-  name            = "${var.name}-service"
-  cluster         = aws_ecs_cluster.example.id
-  task_definition = aws_ecs_task_definition.example.arn
-  desired_count   = 1
-  network_configuration {
-    subnets = ["subnet-025584ff1ed9dcf8d"]
-  }
-}
-
-resource "aws_ecs_task_definition" "example" {
+resource "aws_ecs_task_definition" "signed" {
   family                   = "${var.name}-task-definition"
   network_mode             = "awsvpc"
   requires_compatibilities = ["FARGATE"]
@@ -118,6 +108,25 @@ resource "aws_ecs_task_definition" "example" {
     {
       name      = "${var.name}-container"
       image     = "${data.aws_caller_identity.current.account_id}.dkr.ecr.${data.aws_region.current.name}.amazonaws.com/${var.image_name}:${var.image_version}"
+      cpu       = 10
+      memory    = 512
+      essential = true
+    }
+  ])
+}
+
+resource "aws_ecs_task_definition" "unsigned" {
+  family                   = "${var.name}-task-definition"
+  network_mode             = "awsvpc"
+  requires_compatibilities = ["FARGATE"]
+  task_role_arn            = aws_iam_role.example.arn
+  execution_role_arn       = aws_iam_role.example.arn
+  cpu                      = 1024
+  memory                   = 2048
+  container_definitions = jsonencode([
+    {
+      name      = "${var.name}-container"
+      image     = "${data.aws_caller_identity.current.account_id}.dkr.ecr.${data.aws_region.current.name}.amazonaws.com/${var.image_name}:unsigned"
       cpu       = 10
       memory    = 512
       essential = true

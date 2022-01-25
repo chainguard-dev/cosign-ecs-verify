@@ -34,7 +34,7 @@ func handler(event events.CloudWatchEvent) {
 
 	for i := 0; i < len(lambdaEvent.Detail.Containers); i++ {
 		log.Printf("[INFO] Container Image %v : %v", i, lambdaEvent.Detail.Containers[i].Image)
-		verified, err := Verify(lambdaEvent.Detail.Containers[i].Image, lambdaEvent.Region, lambdaEvent.Account)
+		verified, err := Verify(lambdaEvent.Detail.Containers[i].Image)
 		if err != nil {
 			log.Printf("[ERROR] Verifing image: %v %v", verified, err)
 		}
@@ -43,6 +43,11 @@ func handler(event events.CloudWatchEvent) {
 		} else {
 			log.Println("[INFO] NOT VERIFIED")
 			//Stop Tasks etc
+			err := stopTask(lambdaEvent.Detail.ClusterArn, lambdaEvent.Detail.TaskArn)
+			if err != nil {
+				log.Printf("[ERROR] Stopping Task %v : %v", lambdaEvent.Detail.TaskArn, err)
+			}
+			sendNotificationEvent(lambdaEvent.Detail.ClusterArn, lambdaEvent.Detail.TaskDefinitionArn, lambdaEvent.Detail.TaskArn)
 		}
 	}
 }

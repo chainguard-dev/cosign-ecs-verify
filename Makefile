@@ -1,6 +1,6 @@
 NAME ?= cosign-ecs
 IMAGE ?= distroless-base
-VERSION ?= 0.0.1
+VERSION ?= 0.0.3
 GOLANG_VERSION ?= 1.17.2
 AWS_REGION ?= us-west-2
 AWS_DEFAULT_REGION ?= us-west-2
@@ -12,6 +12,7 @@ PACKAGED_TEMPLATE = packaged.yml
 EVENT ?= event.json
 KEY_NAME = cosign-aws
 
+include .env
 export
 
 .PHONY: aws_account
@@ -78,8 +79,11 @@ sam_local_debug: sam_build
 	--debug \
       --template template.yml
 
-start_task:
-	aws ecs start-task --cluster ${NAME}-cluster --task-definition service
+run_signed_task:
+	aws ecs run-task --task-definition "arn:aws:ecs:us-west-2:$(ACCOUNT_ID):task-definition/cosign-ecs-task-definition:5" --cluster $(NAME)-cluster --network-configuration "awsvpcConfiguration={subnets=[$(SUBNET_ID)],securityGroups=[$(SEC_GROUP_ID)],assignPublicIp=ENABLED}" --launch-type FARGATE
+
+run_unsigned_task:
+	aws ecs run-task --task-definition "arn:aws:ecs:us-west-2:$(ACCOUNT_ID):task-definition/cosign-ecs-task-definition:7" --cluster $(NAME)-cluster --network-configuration "awsvpcConfiguration={subnets=[$(SUBNET_ID)],securityGroups=[$(SEC_GROUP_ID)],assignPublicIp=ENABLED}" --launch-type FARGATE
 
 sign: ecr_auth
 	cosign sign --key awskms:///alias/$(NAME) $(ACCOUNT_ID).dkr.ecr.$(AWS_REGION).amazonaws.com/$(IMAGE):$(VERSION)
