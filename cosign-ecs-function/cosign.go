@@ -78,6 +78,28 @@ func Verify(containerImage, region, accountID string) (bool, error) {
 	log.Printf("[INFO] KMS Key Info: %v", kmsResult)
 	ctx := context.TODO()
 
+	//	var key = []byte(`
+	//-----BEGIN PUBLIC KEY-----
+	//MIICIjANBgkqhkiG9w0BAQEFAAOCAg8AMIICCgKCAgEAk5ZYsYTo8KjzDO/e62Ll
+	//b2bn5WEwpXtMwyKgHh3qCSvSut8GPMIpfHhpJ1XiJ3eJdTqjKIDYtRC+73nlu3WL
+	//23jO0l3onGzUTjVumF1oGRmFWj87ZQp4P+SwjwsrF2fxZ8HjJ9JX88yOVNrJrxMf
+	//zGqK/NBhPXFSVhIMUO0/Q8apvkDU2hdUpYd7mkXTiZQTgYEWkuGYTD7PPdUxUspg
+	//W1BbpGHiiQ4El8xdTJrMGvBb8Saa0eDdf848mjUQv1o3aCxj+ha4iFjiA0nDsb7P
+	//h5Fpu+95f47KZHkXHAH+DLI+g5YeJA/+Wmqa8872iyLBt4TOpATpLwqnIktTaymh
+	//4ysoQDCBdyYUxqXqV2uWTGeV8QoDBF+RgWeNGAFZDZi6eA7BwkuQj1zCPIhIzREN
+	//lHlmo5pNP5bLpfD8r/5EY9F9LkzMO+hY1vv0Y8wLUaB62BWI5dFRAHgAYrGrGvdG
+	//00yMojvN8Mbz3LqaRq610rB4bh6MYYr27JhQJt1EFexhvD1UazoMp02w34W98XXP
+	//FpHkmDuIykcJfKk/cJMPj2+F+7i3ZJbrMu3c+dAe/ce9nzPq+A+2xgjVZJ6gpoMD
+	//gimNXDD4GO9VbC11+EOOd9WdVMI95e3Z6rPzk7HuhIjuZi/lOCmzJR0vSpjrlaTw
+	//4m9Tymqqe+YbxXhsSnFYptcCAwEAAQ==
+	//-----END PUBLIC KEY-----
+	//`)
+	//
+	//	err = os.WriteFile("/tmp/publickey", key, 0644)
+	//	if err != nil {
+	//		log.Println("error writing public key")
+	//	}
+
 	pubKey, err := sigs.LoadPublicKey(ctx, fmt.Sprintf("awskms:///%s", *kmsResult.KeyId))
 	if err != nil {
 		return false, err
@@ -125,11 +147,12 @@ func Verify(containerImage, region, accountID string) (bool, error) {
 
 	//Verify Image
 	log.Println("[INFO] COSIGN Verifying sig")
-	_, verified, err := cosign.VerifyImageSignatures(ctx, ref, co)
+	verifiedSigs, _, err := cosign.VerifyImageSignatures(ctx, ref, co)
 	if err != nil {
 		log.Printf("[ERROR] COSIGN error: %v", err)
 	}
-	return verified, err
+
+	return len(verifiedSigs) > 0, err
 }
 
 func doesImageExist(imageName string) ([]*ecr.ImageIdentifier, error) {

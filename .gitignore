@@ -13,6 +13,8 @@ terraform/plan.out
 .aws-sam/
 packaged.yml
 cosign-ecs-function/cosign-ecs-function
+cosign-ecs-function/vendor/*
+cosign-ecs-function/vendor/
 signed.json
 unsigned.json
 # Ignore any .tfvars files that are generated automatically for each Terraform run. Most
