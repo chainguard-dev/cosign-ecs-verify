@@ -77,8 +77,11 @@ func deregisterTaskDefinition(taskDefinitionArn string) {
 
 func sendNotificationEvent(clusterArn, taskDefinitionArn, taskArn string) {
 	if message, err := marshalNotificationMessage(clusterArn, taskDefinitionArn, taskArn); err == nil {
-		publishInput := sns.PublishInput{Message: aws.String(string(message)),
-			TopicArn: aws.String(os.Getenv("SNS_TOPIC_ARN"))}
+		publishInput := sns.PublishInput{
+			Message:  aws.String(string(message)),
+			Subject:  aws.String("Issues with Container image in Cluster"),
+			TopicArn: aws.String(os.Getenv("SNS_TOPIC_ARN")),
+		}
 		// Create client
 		mySession := session.Must(session.NewSession())
 		var svc = sns.New(mySession)
@@ -95,13 +98,15 @@ func sendNotificationEvent(clusterArn, taskDefinitionArn, taskArn string) {
 }
 
 type NotificationMessage struct {
+	Message           string
 	ClusterArn        string
 	TaskDefinitionArn string
 	TaskArn           string
 }
 
 func marshalNotificationMessage(clusterArn, taskDefinitionArn, taskArn string) ([]byte, error) {
-	m := NotificationMessage{clusterArn, taskDefinitionArn, taskArn}
+	message := fmt.Sprintf("Task Definition Attempted to run an unsigned container")
+	m := NotificationMessage{message, clusterArn, taskDefinitionArn, taskArn}
 
 	return json.Marshal(m)
 }
