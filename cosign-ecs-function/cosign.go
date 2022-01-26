@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	ecrlogin "github.com/awslabs/amazon-ecr-credential-helper/ecr-login"
 	"github.com/awslabs/amazon-ecr-credential-helper/ecr-login/api"
@@ -13,22 +12,15 @@ import (
 	ociremote "github.com/sigstore/cosign/pkg/oci/remote"
 	sigs "github.com/sigstore/cosign/pkg/signature"
 	"log"
-	"os"
 )
 
-func Verify(containerImage string) (bool, error) {
+func Verify(containerImage, keyID string) (bool, error) {
 
-	log.Printf("Veriying Container Image: %v", containerImage)
-
-	//Generate the public key from KMS Alias
-	kmsKeyAlias := os.Getenv("COSIGN_KEY")
-	if len(kmsKeyAlias) == 0 {
-		return false, errors.New("KMS Alias is empty")
-	}
+	log.Printf("[INFO] Veriying Container Image: %v", containerImage)
 
 	ctx := context.TODO()
 
-	pubKey, err := sigs.LoadPublicKey(ctx, fmt.Sprintf("awskms:///alias/%s", kmsKeyAlias))
+	pubKey, err := sigs.LoadPublicKey(ctx, fmt.Sprintf("awskms:///%s", keyID))
 	if err != nil {
 		return false, err
 	}
@@ -56,6 +48,7 @@ func Verify(containerImage string) (bool, error) {
 	verifiedSigs, _, err := cosign.VerifyImageSignatures(ctx, ref, co)
 	if err != nil {
 		log.Printf("[ERROR] COSIGN error: %v", err)
+		return false, err
 	}
 
 	return len(verifiedSigs) > 0, err

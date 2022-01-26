@@ -66,16 +66,16 @@ sam_build: go_build
 	sam build
 
 sam_package: sam_build
-	sam package --template-file template.yml --s3-bucket chainguard-${NAME} --output-template-file ${PACKAGED_TEMPLATE}
+	sam package --config-file samconfig.toml --template-file template.yml --s3-bucket chainguard-${NAME} --output-template-file ${PACKAGED_TEMPLATE}
 
 sam_deploy: sam_package
-	sam deploy --template-file template.yml --stack-name cosign-verify --template-file ${PACKAGED_TEMPLATE} --capabilities CAPABILITY_IAM --s3-bucket chainguard-${NAME}
+	sam deploy --config-file samconfig.toml --parameter-overrides KeyId=${KeyId} --template-file template.yml --stack-name cosign-verify --template-file ${PACKAGED_TEMPLATE} --capabilities CAPABILITY_IAM --s3-bucket chainguard-${NAME}
 
 sam_local: sam_build
-	sam local invoke -e ${EVENT}
+	sam local invoke -e ${EVENT} --env-vars env.json
 
 sam_local_debug: sam_build
-	sam local invoke -e ${EVENT} \
+	sam local invoke -e ${EVENT} --env-vars env.json \
 	--debug \
       --template template.yml
 

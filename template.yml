@@ -8,7 +8,9 @@ Description: >
 Globals:
   Function:
     Timeout: 5
-
+Parameters:
+    KeyId:
+      Type: String
 Resources:
   TeamNotificationTopic:
     Type: AWS::SNS::Topic
@@ -98,6 +100,15 @@ Resources:
             Action:
               - sns:Publish
             Resource: !Ref TeamNotificationTopic
+      - Statement:
+          - Sid: COSIGNKMSPolicy
+            Effect: Allow
+            Action:
+              - kms:GetPublicKey
+              - kms:GenerateDataKey
+              - kms:Decrypt
+              - kms:DescribeKey
+            Resource: !Ref KeyId
       Events:
         Trigger:
           Type: CloudWatchEvent 

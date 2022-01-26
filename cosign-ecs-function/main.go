@@ -34,21 +34,28 @@ func handler(event events.CloudWatchEvent) {
 
 	for i := 0; i < len(lambdaEvent.Detail.Containers); i++ {
 		log.Printf("[INFO] Container Image %v : %v", i, lambdaEvent.Detail.Containers[i].Image)
-		verified, err := Verify(lambdaEvent.Detail.Containers[i].Image)
+
+		keyID, err := getKeyID(lambdaEvent.Account, lambdaEvent.Region)
 		if err != nil {
-			log.Printf("[ERROR] Verifing image: %v %v", verified, err)
+			log.Printf("[ERROR] Verifing Key ID %v", err)
+		}
+		verified, err := Verify(lambdaEvent.Detail.Containers[i].Image, keyID)
+		if err != nil {
+			log.Printf("[ERROR] Error while verifing image: %v %v", verified, err)
 		}
 		if verified {
 			log.Println("[INFO] VERIFIED")
 		} else {
 			log.Printf("[INFO] %v NOT VERIFIED", lambdaEvent.Detail.Containers[i].Image)
 			log.Printf("[INFO] Stopping Task %v", lambdaEvent.Detail.TaskArn)
-			//Stop Tasks etc
+			//Stop Task Definition
 			err := stopTask(lambdaEvent.Detail.ClusterArn, lambdaEvent.Detail.TaskArn)
 			if err != nil {
 				log.Printf("[ERROR] Stopping Task %v : %v", lambdaEvent.Detail.TaskArn, err)
+			} else {
+				log.Println("[INFO] Sending SNS Notification")
+				sendNotificationEvent(lambdaEvent.Detail.ClusterArn, lambdaEvent.Detail.TaskDefinitionArn, lambdaEvent.Detail.TaskArn)
 			}
-			sendNotificationEvent(lambdaEvent.Detail.ClusterArn, lambdaEvent.Detail.TaskDefinitionArn, lambdaEvent.Detail.TaskArn)
 		}
 	}
 }
