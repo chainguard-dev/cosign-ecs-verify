@@ -1,12 +1,18 @@
-NAME ?= cosign-ecs
+NAME ?= cosign-ecs-demo
 IMAGE ?= distroless-base
 VERSION ?= 0.0.3
 AWS_REGION ?= us-west-2
-AWS_DEFAULT_REGION ?= us-west-2
 ACCOUNT_ID ?= $(shell aws sts get-caller-identity --query Account --output text)
-PACKAGED_TEMPLATE = packaged.yml
 EVENT ?= event.json
-KEY_NAME = cosign-aws
+
+AWS_DEFAULT_REGION = ${AWS_REGION}
+KEY_NAME = ${NAME}-key
+STACK_NAME = ${NAME}-stack
+CLUSTER_NAME = ${NAME}-cluster
+SAM_TEMPLATE = template.yml
+PACKAGED_TEMPLATE = packaged.yml
+KEY_ID = TODO
+SUBNET_ID = TODO
 
 export
 
@@ -58,39 +64,67 @@ sam_build: go_build
 	sam build
 
 sam_package: sam_build
-	sam package --config-file samconfig.toml --template-file template.yml --output-template-file ${PACKAGED_TEMPLATE} --resolve-s3
+	sam package \
+		--template-file ${SAM_TEMPLATE} \
+		--output-template-file ${PACKAGED_TEMPLATE} \
+		--resolve-s3
 
 sam_deploy: sam_package
-	sam deploy --config-file samconfig.toml --parameter-overrides KeyId=${KeyId} --template-file template.yml --stack-name cosign-verify --template-file ${PACKAGED_TEMPLATE} --capabilities CAPABILITY_IAM --resolve-s3
+	sam deploy \
+		--template-file ${SAM_TEMPLATE} \
+		--resolve-s3 \
+		--parameter-overrides KeyId=${KEY_ID} \
+		--capabilities CAPABILITY_IAM \
+		--stack-name ${STACK_NAME}
 
 sam_local: sam_build
-	sam local invoke -e ${EVENT} --template template.yml
+	sam local invoke \
+		--event ${EVENT} \
+		--template ${SAM_TEMPLATE}
 
 sam_local_debug: sam_build
-	sam local invoke -e ${EVENT} --template template.yml --debug
+	sam local invoke \
+		--event ${EVENT} \
+		--template ${SAM_TEMPLATE} \
+		--debug
 
 sam_delete:
 	sam delete \
-		--stack-name ${NAME}-stack \
+		--stack-name ${STACK_NAME} \
 		--region ${AWS_REGION} \
 		--no-prompts
 #  if --no-prompts, it ignores $AWS_REGION
 
 run_signed_task:
-	aws ecs run-task --task-definition "arn:aws:ecs:us-west-2:$(ACCOUNT_ID):task-definition/cosign-ecs-task-definition:2" --cluster $(NAME)-cluster --network-configuration "awsvpcConfiguration={subnets=[$(SUBNET_ID)],securityGroups=[$(SEC_GROUP_ID)],assignPublicIp=ENABLED}" --launch-type FARGATE
+	aws ecs run-task \
+		--task-definition "arn:aws:ecs:us-west-2:$(ACCOUNT_ID):task-definition/cosign-ecs-task-definition:2" \
+		--cluster ${CLUSTER_NAME} \
+		--network-configuration "awsvpcConfiguration={subnets=[$(SUBNET_ID)],securityGroups=[$(SEC_GROUP_ID)],assignPublicIp=ENABLED}" \
+		--launch-type FARGATE
 
 run_unsigned_task:
-	aws ecs run-task --task-definition "arn:aws:ecs:us-west-2:$(ACCOUNT_ID):task-definition/cosign-ecs-task-definition:7" --cluster $(NAME)-cluster --network-configuration "awsvpcConfiguration={subnets=[$(SUBNET_ID)],securityGroups=[$(SEC_GROUP_ID)],assignPublicIp=ENABLED}" --launch-type FARGATE
+	aws ecs run-task \
+		--task-definition "arn:aws:ecs:us-west-2:$(ACCOUNT_ID):task-definition/cosign-ecs-task-definition:7" \
+		--cluster $(NAME)-cluster \
+		--network-configuration "awsvpcConfiguration={subnets=[$(SUBNET_ID)],securityGroups=[$(SEC_GROUP_ID)],assignPublicIp=ENABLED}" \
+		--launch-type FARGATE
 
 sign: ecr_auth
-	cosign sign --key awskms:///alias/$(NAME) $(ACCOUNT_ID).dkr.ecr.$(AWS_REGION).amazonaws.com/$(IMAGE):$(VERSION)
+	cosign sign \
+		--key awskms:///alias/$(KEY_NAME) $(ACCOUNT_ID).dkr.ecr.$(AWS_REGION).amazonaws.com/$(IMAGE):$(VERSION)
 
 key_gen:
-	cosign generate-key-pair --kms awskms:///alias/$(KEY_NAME) $(ACCOUNT_ID).dkr.ecr.$(AWS_REGION).amazonaws.com/$(IMAGE):$(VERSION)
+	cosign generate-key-pair \
+		--kms awskms:///alias/$(KEY_NAME) $(ACCOUNT_ID).dkr.ecr.$(AWS_REGION).amazonaws.com/$(IMAGE):$(VERSION)
 
 verify: key_gen ecr_auth
-	cosign verify --key cosign.pub $(ACCOUNT_ID).dkr.ecr.$(AWS_REGION).amazonaws.com/$(IMAGE):$(VERSION)
+	cosign verify \
+		--key cosign.pub \
+		$(ACCOUNT_ID).dkr.ecr.$(AWS_REGION).amazonaws.com/$(IMAGE):$(VERSION)
 
 .SILENT: ecr_auth
 ecr_auth:
-	docker login --username AWS -p $(shell aws ecr get-login-password --region $(AWS_REGION) ) $(ACCOUNT_ID).dkr.ecr.$(AWS_REGION).amazonaws.com
+	docker login \
+		--username AWS \
+		--password $(shell aws ecr get-login-password --region $(AWS_REGION)) \  # TODO: password-stdin
+		$(ACCOUNT_ID).dkr.ecr.$(AWS_REGION).amazonaws.com
