@@ -8,7 +8,6 @@ PACKAGED_TEMPLATE = packaged.yml
 EVENT ?= event.json
 KEY_NAME = cosign-aws
 
-include .env
 export
 
 .PHONY: aws_account
@@ -68,12 +67,10 @@ sam_deploy: sam_package
 	sam deploy --config-file samconfig.toml --parameter-overrides KeyId=${KeyId} --template-file template.yml --stack-name cosign-verify --template-file ${PACKAGED_TEMPLATE} --capabilities CAPABILITY_IAM --s3-bucket chainguard-${NAME}
 
 sam_local: sam_build
-	sam local invoke -e ${EVENT} --env-vars env.json
+	sam local invoke -e ${EVENT} --template template.yml
 
 sam_local_debug: sam_build
-	sam local invoke -e ${EVENT} --env-vars env.json \
-	--debug \
-      --template template.yml
+	sam local invoke -e ${EVENT} --template template.yml --debug
 
 run_signed_task:
 	aws ecs run-task --task-definition "arn:aws:ecs:us-west-2:$(ACCOUNT_ID):task-definition/cosign-ecs-task-definition:2" --cluster $(NAME)-cluster --network-configuration "awsvpcConfiguration={subnets=[$(SUBNET_ID)],securityGroups=[$(SEC_GROUP_ID)],assignPublicIp=ENABLED}" --launch-type FARGATE
