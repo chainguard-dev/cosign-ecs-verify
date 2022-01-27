@@ -50,7 +50,7 @@ tf_refresh:
 
 go_build:
 	cd ./cosign-ecs-function && go mod tidy && \
-	GOOS=linux GOARCH=amd64 go build -o cosign-ecs-function .
+	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o cosign-ecs-function .
 
 clean:
 	rm -f ./cosign-ecs-function/cosign-ecs-function ${PACKAGED_TEMPLATE}
