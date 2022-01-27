@@ -54,17 +54,14 @@ go_build:
 clean:
 	rm -f ./cosign-ecs-function/cosign-ecs-function ${PACKAGED_TEMPLATE}
 
-sam_init:
-	aws s3 mb s3://chainguard-${NAME}
-
 sam_build: go_build
 	sam build
 
 sam_package: sam_build
-	sam package --config-file samconfig.toml --template-file template.yml --s3-bucket chainguard-${NAME} --output-template-file ${PACKAGED_TEMPLATE}
+	sam package --config-file samconfig.toml --template-file template.yml --output-template-file ${PACKAGED_TEMPLATE} --resolve-s3
 
 sam_deploy: sam_package
-	sam deploy --config-file samconfig.toml --parameter-overrides KeyId=${KeyId} --template-file template.yml --stack-name cosign-verify --template-file ${PACKAGED_TEMPLATE} --capabilities CAPABILITY_IAM --s3-bucket chainguard-${NAME}
+	sam deploy --config-file samconfig.toml --parameter-overrides KeyId=${KeyId} --template-file template.yml --stack-name cosign-verify --template-file ${PACKAGED_TEMPLATE} --capabilities CAPABILITY_IAM --resolve-s3
 
 sam_local: sam_build
 	sam local invoke -e ${EVENT} --template template.yml
