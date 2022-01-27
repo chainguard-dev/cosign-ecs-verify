@@ -27,7 +27,7 @@ Resources:
               AWS: !Sub 'arn:aws:iam::${AWS::AccountId}:root'
             Resource: '*'
       EnableKeyRotation: true
-  ECSApprovedContainerRegistyFunction:
+  ECSApprovedContainerRegistryFunction:
     Type: AWS::Serverless::Function 
     Properties:
       CodeUri: cosign-ecs-function/
