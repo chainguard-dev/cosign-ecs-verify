@@ -69,6 +69,13 @@ sam_local: sam_build
 sam_local_debug: sam_build
 	sam local invoke -e ${EVENT} --template template.yml --debug
 
+sam_delete:
+	sam delete \
+		--stack-name ${NAME}-stack \
+		--region ${AWS_REGION} \
+		--no-prompts
+#  if --no-prompts, it ignores $AWS_REGION
+
 run_signed_task:
 	aws ecs run-task --task-definition "arn:aws:ecs:us-west-2:$(ACCOUNT_ID):task-definition/cosign-ecs-task-definition:2" --cluster $(NAME)-cluster --network-configuration "awsvpcConfiguration={subnets=[$(SUBNET_ID)],securityGroups=[$(SEC_GROUP_ID)],assignPublicIp=ENABLED}" --launch-type FARGATE
 
