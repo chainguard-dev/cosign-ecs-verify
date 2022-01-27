@@ -1,12 +1,8 @@
 NAME ?= cosign-ecs
 IMAGE ?= distroless-base
 VERSION ?= 0.0.3
-GOLANG_VERSION ?= 1.17.2
 AWS_REGION ?= us-west-2
 AWS_DEFAULT_REGION ?= us-west-2
-REPO_INFO ?= $(shell git config --get remote.origin.url)
-COMMIT_SHA ?= git-(shell git rev-parse --short HEAD)
-COSIGN_ROLE_NAME ?= "${NAME}-codebuild"
 ACCOUNT_ID ?= $(shell aws sts get-caller-identity --query Account --output text)
 PACKAGED_TEMPLATE = packaged.yml
 EVENT ?= event.json
