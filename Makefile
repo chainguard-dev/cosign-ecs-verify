@@ -15,10 +15,6 @@ KEY_ID = TODO
 
 export
 
-.PHONY: aws_account
-aws_account:
-	${ACCOUNT_ID}
-
 tf_clean:
 	cd terraform/ && \
 	rm -rf .terraform \
