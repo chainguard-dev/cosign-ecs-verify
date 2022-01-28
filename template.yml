@@ -46,45 +46,45 @@ Resources:
       - SNSPublishMessagePolicy:
           TopicName: 
             !Ref TeamNotificationTopic
-      - Statement:
+      - Statement:  # Stop unauthorized tasks
         - Sid: ECSTaskPolicy
           Effect: Allow
           Action:
           - ecs:StopTask
           Resource: !Sub 'arn:aws:ecs:${AWS::Region}:${AWS::AccountId}:task/*' 
-      - Statement:
+      - Statement:  # TODO: do we need this?
         - Sid: ECSServiceRWPolicy
           Effect: Allow
           Action:
           - ecs:UpdateService
           Resource: !Sub 'arn:aws:ecs:${AWS::Region}:${AWS::AccountId}:service/*'
-      - Statement:
+      - Statement:  # TODO: do we need this?
         - Sid: ECSServiceListPolicy
           Effect: Allow
           Action:
           - ecs:ListServices
           Resource: '*'
-      - Statement:
+      - Statement:  # TODO: is this used?
         - Sid: ECSTaskDefinitionPolicy
           Effect: Allow
           Action:
           - ecs:DeregisterTaskDefinition
           Resource: '*'
-      - Statement:
+      - Statement:  # KMS key for communication with SNS
         - Sid: KMSPolicy
           Effect: Allow
           Action:
           - kms:GenerateDataKey
           - kms:Decrypt
           Resource: !GetAtt TeamNotificationTopicKey.Arn
-      - Statement:
+      - Statement:  # Is the other ECR policy sufficient?
           - Sid: ECRPolicy2
             Effect: Allow
             Action:
               - ecr:*
             Resource:
               - '*'
-      - Statement:
+      - Statement:  # Get image information/signature from the repository to verify
         - Sid: ECRPolicy
           Effect: Allow
           Action:
@@ -93,13 +93,13 @@ Resources:
             - ecr:Get*
             - ecr:Describe*
           Resource: !Sub 'arn:aws:ecr:${AWS::Region}:${AWS::AccountId}:repository/*'
-      - Statement:
+      - Statement:  # Notify about invalid signatures via SNS
           - Sid: SNSPublishPolicy
             Effect: Allow
             Action:
               - sns:Publish
             Resource: !Ref TeamNotificationTopic
-      - Statement:
+      - Statement:  # Access the key with which to check signatures
           - Sid: COSIGNKMSPolicy
             Effect: Allow
             Action:
