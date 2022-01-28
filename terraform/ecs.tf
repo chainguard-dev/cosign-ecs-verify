@@ -98,7 +98,7 @@ resource "aws_ecs_task_definition" "signed" {
   container_definitions = jsonencode([
     {
       name      = "${var.name}-container"
-      image     = "${data.aws_caller_identity.current.account_id}.dkr.ecr.${data.aws_region.current.name}.amazonaws.com/${var.image_name}:${var.image_version}"
+      image     = var.image_url_signed
       cpu       = 10
       memory    = 512
       essential = true
@@ -117,7 +117,7 @@ resource "aws_ecs_task_definition" "unsigned" {
   container_definitions = jsonencode([
     {
       name      = "${var.name}-container"
-      image     = "${data.aws_caller_identity.current.account_id}.dkr.ecr.${data.aws_region.current.name}.amazonaws.com/${var.image_name}:unsigned"
+      image     = var.image_url_unsigned
       cpu       = 10
       memory    = 512
       essential = true

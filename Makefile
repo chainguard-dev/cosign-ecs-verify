@@ -5,6 +5,9 @@ VERSION ?= 0.0.3
 AWS_REGION ?= us-west-2
 ACCOUNT_ID ?= $(shell aws sts get-caller-identity --query Account --output text)
 EVENT ?= event.json
+IMAGE ?= distroless-base  # TODO: should be able to change this
+IMAGE_URL_SIGNED ?= ${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${IMAGE}:0.0.3
+IMAGE_URL_UNSIGNED ?= ${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${IMAGE}:unsigned
 
 AWS_DEFAULT_REGION = ${AWS_REGION}
 STACK_NAME = ${NAME}-stack
@@ -29,11 +32,19 @@ tf_get:
 
 tf_plan:
 	cd terraform/ && \
-	terraform plan -var="name=${NAME}" -var="image_name=${IMAGE}" -var="image_version=${VERSION}"  -out=plan.out
+	terraform plan \
+		-var="name=${NAME}" \
+		-var="image_url_signed=${IMAGE_URL_SIGNED}" \
+		-var="image_url_unsigned=${IMAGE_URL_UNSIGNED}" \
+		-out=plan.out
 
 tf_apply:
 	cd terraform/ && \
-	terraform apply -var="name=${NAME}" -var="image_name=${IMAGE}" -var="image_version=${VERSION}" -auto-approve
+	terraform apply \
+		-var="name=${NAME}" \
+		-var="image_url_signed=${IMAGE_URL_SIGNED}" \
+		-var="image_url_unsigned=${IMAGE_URL_UNSIGNED}" \
+		-auto-approve
 
 tf_fmt:
 	cd terraform/ && \
@@ -41,11 +52,18 @@ tf_fmt:
 
 tf_destroy:
 	cd terraform/ && \
-	terraform destroy -var="name=${NAME}" -var="image_name=${IMAGE}" -var="image_version=${VERSION}"  -auto-approve
+	terraform destroy \
+		-var="name=${NAME}" \
+		-var="image_url_signed=${IMAGE_URL_SIGNED}" \
+		-var="image_url_unsigned=${IMAGE_URL_UNSIGNED}" \
+		-auto-approve
 
 tf_refresh:
 	cd terraform/ && \
-	terraform refresh -var="name=${NAME}" -var="image_name=${IMAGE}" -var="image_version=${VERSION}"
+	terraform refresh \
+		-var="name=${NAME}" \
+		-var="image_url_signed=${IMAGE_URL_SIGNED}" \
+		-var="image_url_unsigned=${IMAGE_URL_UNSIGNED}"
 
 go_build:
 	cd ./cosign-ecs-function && go mod tidy && \
@@ -109,19 +127,13 @@ run_unsigned_task:
 		--launch-type FARGATE
 
 sign: ecr_auth
-	cosign sign \
-		--key awskms:///alias/$(KEY_ALIAS) \
-		$(ACCOUNT_ID).dkr.ecr.$(AWS_REGION).amazonaws.com/$(IMAGE):$(VERSION)
+	cosign sign --key awskms:///alias/$(KEY_ALIAS) ${IMAGE_URL_SIGNED}
 
 key_gen:
-	cosign generate-key-pair \
-		--kms awskms:///alias/$(KEY_ALIAS) \
-		$(ACCOUNT_ID).dkr.ecr.$(AWS_REGION).amazonaws.com/$(IMAGE):$(VERSION)
+	cosign generate-key-pair --kms awskms:///alias/$(KEY_ALIAS)
 
 verify: key_gen ecr_auth
-	cosign verify \
-		--key cosign.pub \
-		$(ACCOUNT_ID).dkr.ecr.$(AWS_REGION).amazonaws.com/$(IMAGE):$(VERSION)
+	cosign verify --key awskms:///alias/$(KEY_ALIAS) ${IMAGE_URL_SIGNED}
 
 .SILENT: ecr_auth
 ecr_auth:

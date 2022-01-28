@@ -2,10 +2,10 @@ variable "name" {
   type = string
 }
 
-variable "image_name" {
+variable "image_url_signed" {
   type = string
 }
 
-variable "image_version" {
+variable "image_url_unsigned" {
   type = string
 }

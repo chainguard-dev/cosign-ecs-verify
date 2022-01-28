@@ -38,7 +38,6 @@ Resources:
         Variables:
           SNS_TOPIC_ARN: !Ref TeamNotificationTopic
           COSIGN_KEY: !Ref KeyAlias
-          REPO_NAME: distroless-base
       Tracing: Active
       MemorySize: 512
       Policies:
@@ -93,7 +92,7 @@ Resources:
             - ecr:ListImages
             - ecr:Get*
             - ecr:Describe*
-          Resource: !Sub 'arn:aws:ecr:${AWS::Region}:${AWS::AccountId}:repository/distroless-base'
+          Resource: !Sub 'arn:aws:ecr:${AWS::Region}:${AWS::AccountId}:repository/*'
       - Statement:
           - Sid: SNSPublishPolicy
             Effect: Allow
