@@ -97,7 +97,7 @@ EOF
 }
 
 resource "aws_ecs_task_definition" "signed" {
-  family                   = "${var.name}-task-definition"
+  family                   = "${var.name}-task-definition-signed"
   network_mode             = "awsvpc"
   requires_compatibilities = ["FARGATE"]
   task_role_arn            = aws_iam_role.example.arn
@@ -116,7 +116,7 @@ resource "aws_ecs_task_definition" "signed" {
 }
 
 resource "aws_ecs_task_definition" "unsigned" {
-  family                   = "${var.name}-task-definition"
+  family                   = "${var.name}-task-definition-unsigned"
   network_mode             = "awsvpc"
   requires_compatibilities = ["FARGATE"]
   task_role_arn            = aws_iam_role.example.arn
