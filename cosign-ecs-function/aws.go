@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
@@ -63,13 +62,8 @@ func marshalNotificationMessage(clusterArn, taskDefinitionArn, taskArn string) (
 }
 
 func getKeyID(accountID, region string) (string, error) {
-	//Generate the public key from KMS Alias
-	kmsKeyAlias := os.Getenv("COSIGN_KEY")
-	if len(kmsKeyAlias) == 0 {
-		return "", errors.New("KMS Alias is empty")
-	}
-
-	keyID := fmt.Sprintf("arn:aws:kms:%v:%v:alias/%v", region, accountID, kmsKeyAlias)
+	//Generate the public key from KMS ARN
+	keyID := os.Getenv("COSIGN_KEY")
 	log.Printf("[INFO] Key Alias ARN: %v", keyID)
 	svc := kms.New(session.Must(session.NewSession()))
 	input := &kms.DescribeKeyInput{

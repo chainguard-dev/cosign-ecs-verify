@@ -9,7 +9,7 @@ Globals:
   Function:
     Timeout: 5
 Parameters:
-    KeyAlias:
+    KeyArn:
       Type: String
 Resources:
   TeamNotificationTopic:
@@ -37,7 +37,7 @@ Resources:
       Environment:
         Variables:
           SNS_TOPIC_ARN: !Ref TeamNotificationTopic
-          COSIGN_KEY: !Ref KeyAlias
+          COSIGN_KEY: !Ref KeyArn
       Tracing: Active
       MemorySize: 512
       Policies:
@@ -104,10 +104,8 @@ Resources:
             Effect: Allow
             Action:
               - kms:GetPublicKey
-              - kms:GenerateDataKey
-              - kms:Decrypt
               - kms:DescribeKey
-            Resource: !Ref KeyAlias
+            Resource: !Ref KeyArn
       Events:
         Trigger:
           Type: CloudWatchEvent 

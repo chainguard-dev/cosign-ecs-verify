@@ -86,10 +86,11 @@ sam_package: sam_build
 		--resolve-s3
 
 sam_deploy: sam_package
+	KEY_ARN=$$(aws kms describe-key --key-id alias/${KEY_ALIAS} --query KeyMetadata.Arn | tr -d '"')
 	sam deploy \
 		--template-file ${SAM_TEMPLATE} \
 		--resolve-s3 \
-		--parameter-overrides KeyAlias=${KEY_ALIAS} \
+		--parameter-overrides KeyArn=${KEY_ALIAS} \
 		--capabilities CAPABILITY_IAM \
 		--stack-name ${STACK_NAME}
 
