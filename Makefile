@@ -12,7 +12,6 @@ CLUSTER_NAME = ${NAME}-cluster
 SAM_TEMPLATE = template.yml
 PACKAGED_TEMPLATE = packaged.yml
 KEY_ID = TODO
-SUBNET_ID = TODO
 
 export
 
@@ -95,18 +94,23 @@ sam_delete:
 		--no-prompts
 #  if --no-prompts, it ignores $AWS_REGION
 
+
+SUBNET_JQ_QUERY = '.values.root_module.resources | map(select(.type == "aws_subnet" and .name == "public")) | .[0].values.id'
+
 run_signed_task:
+	SUBNET_ID=$$(cd terraform && terraform show -json | jq $(SUBNET_JQ_QUERY)); \
 	aws ecs run-task \
 		--task-definition "arn:aws:ecs:us-west-2:$(ACCOUNT_ID):task-definition/cosign-ecs-task-definition:2" \
 		--cluster ${CLUSTER_NAME} \
-		--network-configuration "awsvpcConfiguration={subnets=[$(SUBNET_ID)],securityGroups=[$(SEC_GROUP_ID)],assignPublicIp=ENABLED}" \
+		--network-configuration "awsvpcConfiguration={subnets=[$${SUBNET_ID}],assignPublicIp=ENABLED}" \
 		--launch-type FARGATE
 
 run_unsigned_task:
+	SUBNET_ID=$$(cd terraform && terraform show -json | jq $(SUBNET_JQ_QUERY)); \
 	aws ecs run-task \
 		--task-definition "arn:aws:ecs:us-west-2:$(ACCOUNT_ID):task-definition/cosign-ecs-task-definition:7" \
 		--cluster $(NAME)-cluster \
-		--network-configuration "awsvpcConfiguration={subnets=[$(SUBNET_ID)],securityGroups=[$(SEC_GROUP_ID)],assignPublicIp=ENABLED}" \
+		--network-configuration "awsvpcConfiguration={subnets=[$${SUBNET_ID}],assignPublicIp=ENABLED}" \
 		--launch-type FARGATE
 
 sign: ecr_auth
