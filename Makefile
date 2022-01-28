@@ -1,17 +1,16 @@
 NAME ?= cosign-ecs-demo
 IMAGE ?= distroless-base
+KEY_ALIAS ?= ${NAME}-key
 VERSION ?= 0.0.3
 AWS_REGION ?= us-west-2
 ACCOUNT_ID ?= $(shell aws sts get-caller-identity --query Account --output text)
 EVENT ?= event.json
 
 AWS_DEFAULT_REGION = ${AWS_REGION}
-KEY_NAME = ${NAME}-key
 STACK_NAME = ${NAME}-stack
 CLUSTER_NAME = ${NAME}-cluster
 SAM_TEMPLATE = template.yml
 PACKAGED_TEMPLATE = packaged.yml
-KEY_ID = TODO
 
 export
 
@@ -68,7 +67,7 @@ sam_deploy: sam_package
 	sam deploy \
 		--template-file ${SAM_TEMPLATE} \
 		--resolve-s3 \
-		--parameter-overrides KeyId=${KEY_ID} \
+		--parameter-overrides KeyAlias=${KEY_ALIAS} \
 		--capabilities CAPABILITY_IAM \
 		--stack-name ${STACK_NAME}
 
@@ -111,11 +110,13 @@ run_unsigned_task:
 
 sign: ecr_auth
 	cosign sign \
-		--key awskms:///alias/$(KEY_NAME) $(ACCOUNT_ID).dkr.ecr.$(AWS_REGION).amazonaws.com/$(IMAGE):$(VERSION)
+		--key awskms:///alias/$(KEY_ALIAS) \
+		$(ACCOUNT_ID).dkr.ecr.$(AWS_REGION).amazonaws.com/$(IMAGE):$(VERSION)
 
 key_gen:
 	cosign generate-key-pair \
-		--kms awskms:///alias/$(KEY_NAME) $(ACCOUNT_ID).dkr.ecr.$(AWS_REGION).amazonaws.com/$(IMAGE):$(VERSION)
+		--kms awskms:///alias/$(KEY_ALIAS) \
+		$(ACCOUNT_ID).dkr.ecr.$(AWS_REGION).amazonaws.com/$(IMAGE):$(VERSION)
 
 verify: key_gen ecr_auth
 	cosign verify \

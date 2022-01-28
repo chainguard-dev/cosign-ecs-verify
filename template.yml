@@ -9,7 +9,7 @@ Globals:
   Function:
     Timeout: 5
 Parameters:
-    KeyId:
+    KeyAlias:
       Type: String
 Resources:
   TeamNotificationTopic:
@@ -37,7 +37,7 @@ Resources:
       Environment:
         Variables:
           SNS_TOPIC_ARN: !Ref TeamNotificationTopic
-          COSIGN_KEY: cosign-aws
+          COSIGN_KEY: !Ref KeyAlias
           REPO_NAME: distroless-base
       Tracing: Active
       MemorySize: 512
@@ -108,7 +108,7 @@ Resources:
               - kms:GenerateDataKey
               - kms:Decrypt
               - kms:DescribeKey
-            Resource: !Ref KeyId
+            Resource: !Ref KeyAlias
       Events:
         Trigger:
           Type: CloudWatchEvent 

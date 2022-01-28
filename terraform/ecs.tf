@@ -81,15 +81,6 @@ resource "aws_iam_role_policy" "example" {
       "Resource": [
         "${data.aws_ecr_repository.ecr.arn}"
       ]
-    },
-    {
-      "Effect": "Allow",
-      "Action": [
-        "kms:*"
-      ],
-      "Resource": [
-        "${data.aws_kms_alias.cosign.arn}"
-      ]
     }
   ]
 }
