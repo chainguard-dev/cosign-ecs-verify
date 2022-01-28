@@ -11,7 +11,6 @@ IMAGE_URL_UNSIGNED ?= ${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${IMAGE}
 
 AWS_DEFAULT_REGION = ${AWS_REGION}
 STACK_NAME = ${NAME}-stack
-CLUSTER_NAME = ${NAME}-cluster
 SAM_TEMPLATE = template.yml
 PACKAGED_TEMPLATE = packaged.yml
 
@@ -117,20 +116,27 @@ sam_delete:
 ################################################################################
 
 SUBNET_JQ_QUERY = '.values.root_module.resources | map(select(.type == "aws_subnet" and .name == "public")) | .[0].values.id'
+CLUSTER_JQ_QUERY = '.values.root_module.resources | map(select(.type == "aws_ecs_cluster" and .name == "example")) | .[0].values.arn'
+SIGNED_TASK_DEF_JQ_QUERY = '.values.root_module.resources | map(select(.type == "aws_ecs_task_definition" and .name == "signed")) | .[0].values.arn'
+UNSIGNED_TASK_DEF_JQ_QUERY = '.values.root_module.resources | map(select(.type == "aws_ecs_task_definition" and .name == "unsigned")) | .[0].values.arn'
 
 run_signed_task:
-	SUBNET_ID=$$(cd terraform && terraform show -json | jq $(SUBNET_JQ_QUERY)); \
+	SUBNET_ID=$$(cd terraform && terraform show -json | jq -r $(SUBNET_JQ_QUERY)); \
+	TASK_DEF_ARN=$$(cd terraform && terraform show -json | jq -r $(SIGNED_TASK_DEF_JQ_QUERY)); \
+	CLUSTER_ARN=$$(cd terraform && terraform show -json | jq -r $(CLUSTER_JQ_QUERY)); \
 	aws ecs run-task \
-		--task-definition "arn:aws:ecs:us-west-2:$(ACCOUNT_ID):task-definition/cosign-ecs-task-definition:2" \
-		--cluster ${CLUSTER_NAME} \
+		--task-definition $${TASK_DEF_ARN} \
+		--cluster $${CLUSTER_ARN} \
 		--network-configuration "awsvpcConfiguration={subnets=[$${SUBNET_ID}],assignPublicIp=ENABLED}" \
 		--launch-type FARGATE
 
 run_unsigned_task:
-	SUBNET_ID=$$(cd terraform && terraform show -json | jq $(SUBNET_JQ_QUERY)); \
+	SUBNET_ID=$$(cd terraform && terraform show -json | jq -r $(SUBNET_JQ_QUERY)); \
+	TASK_DEF_ARN=$$(cd terraform && terraform show -json | jq -r $(UNSIGNED_TASK_DEF_JQ_QUERY)); \
+	CLUSTER_ARN=$$(cd terraform && terraform show -json | jq -r $(CLUSTER_JQ_QUERY)); \
 	aws ecs run-task \
-		--task-definition "arn:aws:ecs:us-west-2:$(ACCOUNT_ID):task-definition/cosign-ecs-task-definition:7" \
-		--cluster $(NAME)-cluster \
+		--task-definition $${TASK_DEF_ARN} \
+		--cluster $${CLUSTER_ARN} \
 		--network-configuration "awsvpcConfiguration={subnets=[$${SUBNET_ID}],assignPublicIp=ENABLED}" \
 		--launch-type FARGATE
 
