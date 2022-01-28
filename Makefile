@@ -17,6 +17,10 @@ PACKAGED_TEMPLATE = packaged.yml
 
 export
 
+################################################################################
+# Terraform
+################################################################################
+
 tf_clean:
 	cd terraform/ && \
 	rm -rf .terraform \
@@ -65,12 +69,13 @@ tf_refresh:
 		-var="image_url_signed=${IMAGE_URL_SIGNED}" \
 		-var="image_url_unsigned=${IMAGE_URL_UNSIGNED}"
 
+################################################################################
+# SAM
+################################################################################
+
 go_build:
 	cd ./cosign-ecs-function && go mod tidy && \
 	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o cosign-ecs-function .
-
-clean:
-	rm -f ./cosign-ecs-function/cosign-ecs-function ${PACKAGED_TEMPLATE}
 
 sam_build: go_build
 	sam build
@@ -107,6 +112,9 @@ sam_delete:
 		--no-prompts
 #  if --no-prompts, it ignores $AWS_REGION
 
+################################################################################
+# Test it out!
+################################################################################
 
 SUBNET_JQ_QUERY = '.values.root_module.resources | map(select(.type == "aws_subnet" and .name == "public")) | .[0].values.id'
 
@@ -126,6 +134,10 @@ run_unsigned_task:
 		--network-configuration "awsvpcConfiguration={subnets=[$${SUBNET_ID}],assignPublicIp=ENABLED}" \
 		--launch-type FARGATE
 
+################################################################################
+# Setup and cleanup
+################################################################################
+
 sign: ecr_auth
 	cosign sign --key awskms:///alias/$(KEY_ALIAS) ${IMAGE_URL_SIGNED}
 
@@ -141,3 +153,7 @@ ecr_auth:
 		--username AWS \
 		--password $(shell aws ecr get-login-password --region $(AWS_REGION)) \  # TODO: password-stdin
 		$(ACCOUNT_ID).dkr.ecr.$(AWS_REGION).amazonaws.com
+
+
+clean:
+	rm -f ./cosign-ecs-function/cosign-ecs-function ${PACKAGED_TEMPLATE}
