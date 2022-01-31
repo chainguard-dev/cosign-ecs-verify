@@ -1,4 +1,4 @@
-NAME ?= cosign-ecs-demo
+NAME ?= zjn-cosign-ecs-demo
 IMAGE ?= distroless-base
 KEY_ALIAS ?= ${NAME}-key
 VERSION ?= 0.0.3
