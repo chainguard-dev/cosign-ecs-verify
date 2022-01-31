@@ -9,7 +9,6 @@ EVENT ?= event.json
 IMAGE ?= distroless-base
 IMAGE_URL_SIGNED ?= ${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${IMAGE}:0.0.3
 IMAGE_URL_UNSIGNED ?= ${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${IMAGE}:unsigned
-SUBNET_ID ?= default
 
 AWS_DEFAULT_REGION = ${AWS_REGION}
 STACK_NAME = ${NAME}-stack
@@ -121,19 +120,21 @@ sam_delete:
 run_signed_task:
 	TASK_DEF_ARN=$$(cd terraform && terraform output -raw signed_task_arn); \
 	CLUSTER_ARN=$$(cd terraform && terraform output -raw cluster_arn); \
+	SUBNET_ID=$$(cd terraform && terraform output -raw subnet_id) && \
 	aws ecs run-task \
 		--task-definition $${TASK_DEF_ARN} \
 		--cluster $${CLUSTER_ARN} \
-		--network-configuration "awsvpcConfiguration={subnets=[${SUBNET_ID}],assignPublicIp=ENABLED}" \
+		--network-configuration "awsvpcConfiguration={subnets=[$${SUBNET_ID}],assignPublicIp=ENABLED}" \
 		--launch-type FARGATE
 
 run_unsigned_task:
 	TASK_DEF_ARN=$$(cd terraform && terraform output -raw unsigned_task_arn); \
 	CLUSTER_ARN=$$(cd terraform && terraform output -raw cluster_arn); \
+	SUBNET_ID=$$(cd terraform && terraform output -raw subnet_id) && \
 	aws ecs run-task \
 		--task-definition $${TASK_DEF_ARN} \
 		--cluster $${CLUSTER_ARN} \
-		--network-configuration "awsvpcConfiguration={subnets=[${SUBNET_ID}],assignPublicIp=ENABLED}" \
+		--network-configuration "awsvpcConfiguration={subnets=[$${SUBNET_ID}],assignPublicIp=ENABLED}" \
 		--launch-type FARGATE
 
 ################################################################################
