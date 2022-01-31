@@ -19,7 +19,6 @@
 - TF
 - AWS CLI and SAM CLI
 - Go 1.17
-- TODO: maybe jq?
 - make
 - docker
 - cosign
