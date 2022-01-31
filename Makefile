@@ -125,7 +125,8 @@ run_signed_task:
 		--task-definition $${TASK_DEF_ARN} \
 		--cluster $${CLUSTER_ARN} \
 		--network-configuration "awsvpcConfiguration={subnets=[$${SUBNET_ID}],assignPublicIp=ENABLED}" \
-		--launch-type FARGATE
+		--launch-type FARGATE \
+		--no-cli-pager
 
 run_unsigned_task:
 	TASK_DEF_ARN=$$(cd terraform && terraform output -raw unsigned_task_arn) && \
@@ -135,7 +136,15 @@ run_unsigned_task:
 		--task-definition $${TASK_DEF_ARN} \
 		--cluster $${CLUSTER_ARN} \
 		--network-configuration "awsvpcConfiguration={subnets=[$${SUBNET_ID}],assignPublicIp=ENABLED}" \
-		--launch-type FARGATE
+		--launch-type FARGATE \
+		--no-cli-pager
+
+task_status:
+	CLUSTER_ARN=$$(cd terraform && terraform output -raw cluster_arn) && \
+	echo "STOPPED tasks" && \
+	aws ecs list-tasks --cluster $$CLUSTER_ARN --desired-status STOPPED && \
+	echo "RUNNING tasks" && \
+	aws ecs list-tasks --cluster $$CLUSTER_ARN --desired-status RUNNING
 
 ################################################################################
 # Setup and cleanup
@@ -159,3 +168,9 @@ ecr_auth:
 
 clean:
 	rm -f ./cosign-ecs-function/cosign-ecs-function ${PACKAGED_TEMPLATE}
+
+stop_tasks:
+	CLUSTER_ARN=$$(cd terraform && terraform output -raw cluster_arn) && \
+	aws ecs list-tasks --cluster $$CLUSTER_ARN --desired-status RUNNING --output text --query taskArns | \
+		xargs --no-run-if-empty --max-args 1 \
+			aws ecs stop-task --no-cli-pager --cluster $$CLUSTER_ARN --task
