@@ -118,8 +118,8 @@ sam_delete:
 ################################################################################
 
 run_signed_task:
-	TASK_DEF_ARN=$$(cd terraform && terraform output -raw signed_task_arn); \
-	CLUSTER_ARN=$$(cd terraform && terraform output -raw cluster_arn); \
+	TASK_DEF_ARN=$$(cd terraform && terraform output -raw signed_task_arn) && \
+	CLUSTER_ARN=$$(cd terraform && terraform output -raw cluster_arn) && \
 	SUBNET_ID=$$(cd terraform && terraform output -raw subnet_id) && \
 	aws ecs run-task \
 		--task-definition $${TASK_DEF_ARN} \
@@ -128,8 +128,8 @@ run_signed_task:
 		--launch-type FARGATE
 
 run_unsigned_task:
-	TASK_DEF_ARN=$$(cd terraform && terraform output -raw unsigned_task_arn); \
-	CLUSTER_ARN=$$(cd terraform && terraform output -raw cluster_arn); \
+	TASK_DEF_ARN=$$(cd terraform && terraform output -raw unsigned_task_arn) && \
+	CLUSTER_ARN=$$(cd terraform && terraform output -raw cluster_arn) && \
 	SUBNET_ID=$$(cd terraform && terraform output -raw subnet_id) && \
 	aws ecs run-task \
 		--task-definition $${TASK_DEF_ARN} \
