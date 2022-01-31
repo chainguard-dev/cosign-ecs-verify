@@ -77,7 +77,7 @@ go_build:
 	cd ./cosign-ecs-function && go mod tidy && \
 	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o cosign-ecs-function .
 
-sam_build: go_build
+sam_build:
 	sam build
 
 sam_package: sam_build
