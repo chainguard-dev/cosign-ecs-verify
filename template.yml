@@ -52,24 +52,6 @@ Resources:
           Action:
           - ecs:StopTask
           Resource: !Sub 'arn:aws:ecs:${AWS::Region}:${AWS::AccountId}:task/*' 
-      - Statement:  # TODO: do we need this?
-        - Sid: ECSServiceRWPolicy
-          Effect: Allow
-          Action:
-          - ecs:UpdateService
-          Resource: !Sub 'arn:aws:ecs:${AWS::Region}:${AWS::AccountId}:service/*'
-      - Statement:  # TODO: do we need this?
-        - Sid: ECSServiceListPolicy
-          Effect: Allow
-          Action:
-          - ecs:ListServices
-          Resource: '*'
-      - Statement:  # TODO: is this used?
-        - Sid: ECSTaskDefinitionPolicy
-          Effect: Allow
-          Action:
-          - ecs:DeregisterTaskDefinition
-          Resource: '*'
       - Statement:  # KMS key for communication with SNS
         - Sid: KMSPolicy
           Effect: Allow
@@ -77,22 +59,12 @@ Resources:
           - kms:GenerateDataKey
           - kms:Decrypt
           Resource: !GetAtt TeamNotificationTopicKey.Arn
-      - Statement:  # Is the other ECR policy sufficient?
-          - Sid: ECRPolicy2
-            Effect: Allow
-            Action:
-              - ecr:*
-            Resource:
-              - '*'
-      - Statement:  # Get image information/signature from the repository to verify
+      - Statement:  # Cosign needs access images/signatures to verify.
         - Sid: ECRPolicy
           Effect: Allow
           Action:
-            - ecr:GetAuthorizationToken
-            - ecr:ListImages
-            - ecr:Get*
-            - ecr:Describe*
-          Resource: !Sub 'arn:aws:ecr:${AWS::Region}:${AWS::AccountId}:repository/*'
+            - ecr:*
+          Resource: 'arn:aws:ecr:*'
       - Statement:  # Notify about invalid signatures via SNS
           - Sid: SNSPublishPolicy
             Effect: Allow
