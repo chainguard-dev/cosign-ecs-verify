@@ -46,7 +46,7 @@ For this demo, you will need the following tools installed:
 
 You should [configure the AWS CLI] for your project and account.
 
-[configure the AWS CLI] https://docs.aws.amazon.com/cli/latest/reference/configure/
+[configure the AWS CLI]: https://docs.aws.amazon.com/cli/latest/reference/configure/
 
 We need a key against which to verify image signatures. If you have an existing
 keypair for cosign in AWS KMS, set it:
@@ -105,11 +105,10 @@ export IMAGE_URL_UNSIGNED=...
 
 Otherwise, we'll build two simple images, push them to Amazon [ECR], and sign only one.
 
-[ECR] https://aws.amazon.com/ecr/
+[ECR]: https://aws.amazon.com/ecr/
 
 First, login to ECR with Docker. We recommend using a [credential helper] for
 docker, but we also provide a Make target `make ecr_auth` that will authenticate
-- clean up kms/docker if desired
 
 ``` shell
 aws ecr create-repository --repository-name $REPO_NAME
@@ -122,7 +121,10 @@ Then, we can create a repository for the signed/unsigned images.
 
 ```shell
 REPO_NAME=ecr-demo-image
-REPO_URL=$(aws ecr create-repository --repository-name $REPO_NAME --query repository.repositoryUri --output text)
+REPO_URL=$(aws ecr create-repository \
+    --repository-name $REPO_NAME \
+    --query repository.repositoryUri \
+    --output text)
 ```
 Finally, we can build and push two simple images (see `Dockerfile`):
 
