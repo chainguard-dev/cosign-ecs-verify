@@ -152,10 +152,9 @@ verify: key_gen ecr_auth
 
 .SILENT: ecr_auth
 ecr_auth:
-	docker login \
-		--username AWS \
-		--password $(shell aws ecr get-login-password --region $(AWS_REGION)) \  # TODO: password-stdin
-		$(ACCOUNT_ID).dkr.ecr.$(AWS_REGION).amazonaws.com
+	REGISTRY_URL="$(ACCOUNT_ID).dkr.ecr.$(AWS_REGION).amazonaws.com"; \
+	aws ecr get-login-password | \
+		docker login --username AWS --password-stdin $$REGISTRY_URL
 
 
 clean:
