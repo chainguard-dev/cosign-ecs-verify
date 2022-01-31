@@ -71,6 +71,8 @@ OTHERWISE, we'll make them
    - make run_unsigned_task
    - verify status of each
 
+note: will run on `default` subnet; can be overridden via `$SUBNET_ID`
+
 ### Cleanup
 
 make sam_delete
