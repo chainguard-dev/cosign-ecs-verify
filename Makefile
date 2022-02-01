@@ -1,23 +1,25 @@
 NAME ?= cosign-ecs
 IMAGE ?= distroless-base
+KEY_ALIAS ?= ${NAME}-key
 VERSION ?= 0.0.3
-GOLANG_VERSION ?= 1.17.2
 AWS_REGION ?= us-west-2
-AWS_DEFAULT_REGION ?= us-west-2
-REPO_INFO ?= $(shell git config --get remote.origin.url)
-COMMIT_SHA ?= git-(shell git rev-parse --short HEAD)
-COSIGN_ROLE_NAME ?= "${NAME}-codebuild"
 ACCOUNT_ID ?= $(shell aws sts get-caller-identity --query Account --output text)
-PACKAGED_TEMPLATE = packaged.yml
 EVENT ?= event.json
-KEY_NAME = cosign-aws
+# TODO: should be able to change this
+IMAGE ?= distroless-base
+IMAGE_URL_SIGNED ?= ${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${IMAGE}:0.0.3
+IMAGE_URL_UNSIGNED ?= ${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${IMAGE}:unsigned
 
-include .env
+AWS_DEFAULT_REGION = ${AWS_REGION}
+STACK_NAME = ${NAME}-stack
+SAM_TEMPLATE = template.yml
+PACKAGED_TEMPLATE = packaged.yml
+
 export
 
-.PHONY: aws_account
-aws_account:
-	${ACCOUNT_ID}
+################################################################################
+# Terraform
+################################################################################
 
 tf_clean:
 	cd terraform/ && \
@@ -34,11 +36,19 @@ tf_get:
 
 tf_plan:
 	cd terraform/ && \
-	terraform plan -var="name=${NAME}" -var="image_name=${IMAGE}" -var="image_version=${VERSION}"  -out=plan.out
+	terraform plan \
+		-var="name=${NAME}" \
+		-var="image_url_signed=${IMAGE_URL_SIGNED}" \
+		-var="image_url_unsigned=${IMAGE_URL_UNSIGNED}" \
+		-out=plan.out
 
 tf_apply:
 	cd terraform/ && \
-	terraform apply -var="name=${NAME}" -var="image_name=${IMAGE}" -var="image_version=${VERSION}" -auto-approve
+	terraform apply \
+		-var="name=${NAME}" \
+		-var="image_url_signed=${IMAGE_URL_SIGNED}" \
+		-var="image_url_unsigned=${IMAGE_URL_UNSIGNED}" \
+		-auto-approve
 
 tf_fmt:
 	cd terraform/ && \
@@ -46,54 +56,121 @@ tf_fmt:
 
 tf_destroy:
 	cd terraform/ && \
-	terraform destroy -var="name=${NAME}" -var="image_name=${IMAGE}" -var="image_version=${VERSION}"  -auto-approve
+	terraform destroy \
+		-var="name=${NAME}" \
+		-var="image_url_signed=${IMAGE_URL_SIGNED}" \
+		-var="image_url_unsigned=${IMAGE_URL_UNSIGNED}" \
+		-auto-approve
 
 tf_refresh:
 	cd terraform/ && \
-	terraform refresh -var="name=${NAME}" -var="image_name=${IMAGE}" -var="image_version=${VERSION}"
+	terraform refresh \
+		-var="name=${NAME}" \
+		-var="image_url_signed=${IMAGE_URL_SIGNED}" \
+		-var="image_url_unsigned=${IMAGE_URL_UNSIGNED}"
+
+################################################################################
+# SAM
+################################################################################
 
 go_build:
 	cd ./cosign-ecs-function && go mod tidy && \
-	GOOS=linux GOARCH=amd64 go build -o cosign-ecs-function .
+	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o cosign-ecs-function .
+
+sam_build:
+	sam build
+
+sam_package: sam_build
+	sam package \
+		--template-file ${SAM_TEMPLATE} \
+		--output-template-file ${PACKAGED_TEMPLATE} \
+		--resolve-s3
+
+sam_deploy: sam_package
+	KEY_ARN=$$(aws kms describe-key --key-id alias/${KEY_ALIAS} --query KeyMetadata.Arn --output text); \
+	sam deploy \
+		--template-file ${SAM_TEMPLATE} \
+		--resolve-s3 \
+		--parameter-overrides KeyArn=$$KEY_ARN \
+		--capabilities CAPABILITY_IAM \
+		--stack-name ${STACK_NAME}
+
+sam_local: sam_build
+	sam local invoke \
+		--event ${EVENT} \
+		--template ${SAM_TEMPLATE}
+
+sam_local_debug: sam_build
+	sam local invoke \
+		--event ${EVENT} \
+		--template ${SAM_TEMPLATE} \
+		--debug
+
+sam_delete:
+	sam delete \
+		--stack-name ${STACK_NAME} \
+		--region ${AWS_REGION} \
+		--no-prompts
+#  if --no-prompts, it ignores $AWS_REGION
+
+################################################################################
+# Test it out!
+################################################################################
+
+run_signed_task:
+	TASK_DEF_ARN=$$(cd terraform && terraform output -raw signed_task_arn) && \
+	CLUSTER_ARN=$$(cd terraform && terraform output -raw cluster_arn) && \
+	SUBNET_ID=$$(cd terraform && terraform output -raw subnet_id) && \
+	aws ecs run-task \
+		--task-definition $${TASK_DEF_ARN} \
+		--cluster $${CLUSTER_ARN} \
+		--network-configuration "awsvpcConfiguration={subnets=[$${SUBNET_ID}],assignPublicIp=ENABLED}" \
+		--launch-type FARGATE \
+		--no-cli-pager
+
+run_unsigned_task:
+	TASK_DEF_ARN=$$(cd terraform && terraform output -raw unsigned_task_arn) && \
+	CLUSTER_ARN=$$(cd terraform && terraform output -raw cluster_arn) && \
+	SUBNET_ID=$$(cd terraform && terraform output -raw subnet_id) && \
+	aws ecs run-task \
+		--task-definition $${TASK_DEF_ARN} \
+		--cluster $${CLUSTER_ARN} \
+		--network-configuration "awsvpcConfiguration={subnets=[$${SUBNET_ID}],assignPublicIp=ENABLED}" \
+		--launch-type FARGATE \
+		--no-cli-pager
+
+task_status:
+	CLUSTER_ARN=$$(cd terraform && terraform output -raw cluster_arn) && \
+	echo "STOPPED tasks" && \
+	aws ecs list-tasks --cluster $$CLUSTER_ARN --desired-status STOPPED && \
+	echo "RUNNING tasks" && \
+	aws ecs list-tasks --cluster $$CLUSTER_ARN --desired-status RUNNING
+
+################################################################################
+# Setup and cleanup
+################################################################################
+
+sign: ecr_auth
+	cosign sign --key awskms:///alias/$(KEY_ALIAS) ${IMAGE_URL_SIGNED}
+
+key_gen:
+	cosign generate-key-pair --kms awskms:///alias/$(KEY_ALIAS)
+
+verify: key_gen ecr_auth
+	cosign verify --key awskms:///alias/$(KEY_ALIAS) ${IMAGE_URL_SIGNED}
+
+.SILENT: ecr_auth
+ecr_auth:
+	REGISTRY_URL="$(ACCOUNT_ID).dkr.ecr.$(AWS_REGION).amazonaws.com"; \
+	aws ecr get-login-password | \
+		docker login --username AWS --password-stdin $$REGISTRY_URL
+
 
 clean:
 	rm -f ./cosign-ecs-function/cosign-ecs-function ${PACKAGED_TEMPLATE}
 
-sam_init:
-	aws s3 mb s3://chainguard-${NAME}
-
-sam_build: go_build
-	sam build
-
-sam_package: sam_build
-	sam package --config-file samconfig.toml --template-file template.yml --s3-bucket chainguard-${NAME} --output-template-file ${PACKAGED_TEMPLATE}
-
-sam_deploy: sam_package
-	sam deploy --config-file samconfig.toml --parameter-overrides KeyId=${KeyId} --template-file template.yml --stack-name cosign-verify --template-file ${PACKAGED_TEMPLATE} --capabilities CAPABILITY_IAM --s3-bucket chainguard-${NAME}
-
-sam_local: sam_build
-	sam local invoke -e ${EVENT} --env-vars env.json
-
-sam_local_debug: sam_build
-	sam local invoke -e ${EVENT} --env-vars env.json \
-	--debug \
-      --template template.yml
-
-run_signed_task:
-	aws ecs run-task --task-definition "arn:aws:ecs:us-west-2:$(ACCOUNT_ID):task-definition/cosign-ecs-task-definition:2" --cluster $(NAME)-cluster --network-configuration "awsvpcConfiguration={subnets=[$(SUBNET_ID)],securityGroups=[$(SEC_GROUP_ID)],assignPublicIp=ENABLED}" --launch-type FARGATE
-
-run_unsigned_task:
-	aws ecs run-task --task-definition "arn:aws:ecs:us-west-2:$(ACCOUNT_ID):task-definition/cosign-ecs-task-definition:7" --cluster $(NAME)-cluster --network-configuration "awsvpcConfiguration={subnets=[$(SUBNET_ID)],securityGroups=[$(SEC_GROUP_ID)],assignPublicIp=ENABLED}" --launch-type FARGATE
-
-sign: ecr_auth
-	cosign sign --key awskms:///alias/$(NAME) $(ACCOUNT_ID).dkr.ecr.$(AWS_REGION).amazonaws.com/$(IMAGE):$(VERSION)
-
-key_gen:
-	cosign generate-key-pair --kms awskms:///alias/$(KEY_NAME) $(ACCOUNT_ID).dkr.ecr.$(AWS_REGION).amazonaws.com/$(IMAGE):$(VERSION)
-
-verify: key_gen ecr_auth
-	cosign verify --key cosign.pub $(ACCOUNT_ID).dkr.ecr.$(AWS_REGION).amazonaws.com/$(IMAGE):$(VERSION)
-
-.SILENT: ecr_auth
-ecr_auth:
-	docker login --username AWS -p $(shell aws ecr get-login-password --region $(AWS_REGION) ) $(ACCOUNT_ID).dkr.ecr.$(AWS_REGION).amazonaws.com
+stop_tasks:
+	CLUSTER_ARN=$$(cd terraform && terraform output -raw cluster_arn) && \
+	aws ecs list-tasks --cluster $$CLUSTER_ARN --desired-status RUNNING --output text --query taskArns | \
+		xargs --no-run-if-empty --max-args 1 \
+			aws ecs stop-task --no-cli-pager --cluster $$CLUSTER_ARN --task

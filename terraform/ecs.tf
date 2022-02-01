@@ -81,15 +81,6 @@ resource "aws_iam_role_policy" "example" {
       "Resource": [
         "${data.aws_ecr_repository.ecr.arn}"
       ]
-    },
-    {
-      "Effect": "Allow",
-      "Action": [
-        "kms:*"
-      ],
-      "Resource": [
-        "${data.aws_kms_alias.cosign.arn}"
-      ]
     }
   ]
 }
@@ -97,7 +88,7 @@ EOF
 }
 
 resource "aws_ecs_task_definition" "signed" {
-  family                   = "${var.name}-task-definition"
+  family                   = "${var.name}-task-definition-signed"
   network_mode             = "awsvpc"
   requires_compatibilities = ["FARGATE"]
   task_role_arn            = aws_iam_role.example.arn
@@ -107,7 +98,7 @@ resource "aws_ecs_task_definition" "signed" {
   container_definitions = jsonencode([
     {
       name      = "${var.name}-container"
-      image     = "${data.aws_caller_identity.current.account_id}.dkr.ecr.${data.aws_region.current.name}.amazonaws.com/${var.image_name}:${var.image_version}"
+      image     = var.image_url_signed
       cpu       = 10
       memory    = 512
       essential = true
@@ -116,7 +107,7 @@ resource "aws_ecs_task_definition" "signed" {
 }
 
 resource "aws_ecs_task_definition" "unsigned" {
-  family                   = "${var.name}-task-definition"
+  family                   = "${var.name}-task-definition-unsigned"
   network_mode             = "awsvpc"
   requires_compatibilities = ["FARGATE"]
   task_role_arn            = aws_iam_role.example.arn
@@ -126,7 +117,7 @@ resource "aws_ecs_task_definition" "unsigned" {
   container_definitions = jsonencode([
     {
       name      = "${var.name}-container"
-      image     = "${data.aws_caller_identity.current.account_id}.dkr.ecr.${data.aws_region.current.name}.amazonaws.com/${var.image_name}:unsigned"
+      image     = var.image_url_unsigned
       cpu       = 10
       memory    = 512
       essential = true

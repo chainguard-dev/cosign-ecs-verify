@@ -9,7 +9,7 @@ Globals:
   Function:
     Timeout: 5
 Parameters:
-    KeyId:
+    KeyArn:
       Type: String
 Resources:
   TeamNotificationTopic:
@@ -27,7 +27,7 @@ Resources:
               AWS: !Sub 'arn:aws:iam::${AWS::AccountId}:root'
             Resource: '*'
       EnableKeyRotation: true
-  ECSApprovedContainerRegistyFunction:
+  ECSApprovedContainerRegistryFunction:
     Type: AWS::Serverless::Function 
     Properties:
       CodeUri: cosign-ecs-function/
@@ -37,8 +37,7 @@ Resources:
       Environment:
         Variables:
           SNS_TOPIC_ARN: !Ref TeamNotificationTopic
-          COSIGN_KEY: cosign-aws
-          REPO_NAME: distroless-base
+          COSIGN_KEY: !Ref KeyArn
       Tracing: Active
       MemorySize: 512
       Policies:
@@ -47,68 +46,38 @@ Resources:
       - SNSPublishMessagePolicy:
           TopicName: 
             !Ref TeamNotificationTopic
-      - Statement:
+      - Statement:  # Stop unauthorized tasks
         - Sid: ECSTaskPolicy
           Effect: Allow
           Action:
           - ecs:StopTask
           Resource: !Sub 'arn:aws:ecs:${AWS::Region}:${AWS::AccountId}:task/*' 
-      - Statement:
-        - Sid: ECSServiceRWPolicy
-          Effect: Allow
-          Action:
-          - ecs:UpdateService
-          Resource: !Sub 'arn:aws:ecs:${AWS::Region}:${AWS::AccountId}:service/*'
-      - Statement:
-        - Sid: ECSServiceListPolicy
-          Effect: Allow
-          Action:
-          - ecs:ListServices
-          Resource: '*'
-      - Statement:
-        - Sid: ECSTaskDefinitionPolicy
-          Effect: Allow
-          Action:
-          - ecs:DeregisterTaskDefinition
-          Resource: '*'
-      - Statement:
+      - Statement:  # KMS key for communication with SNS
         - Sid: KMSPolicy
           Effect: Allow
           Action:
           - kms:GenerateDataKey
           - kms:Decrypt
           Resource: !GetAtt TeamNotificationTopicKey.Arn
-      - Statement:
-          - Sid: ECRPolicy2
-            Effect: Allow
-            Action:
-              - ecr:*
-            Resource:
-              - '*'
-      - Statement:
+      - Statement:  # Cosign needs access images/signatures to verify.
         - Sid: ECRPolicy
           Effect: Allow
           Action:
-            - ecr:GetAuthorizationToken
-            - ecr:ListImages
-            - ecr:Get*
-            - ecr:Describe*
-          Resource: !Sub 'arn:aws:ecr:${AWS::Region}:${AWS::AccountId}:repository/distroless-base'
-      - Statement:
+            - ecr:*
+          Resource: 'arn:aws:ecr:*'
+      - Statement:  # Notify about invalid signatures via SNS
           - Sid: SNSPublishPolicy
             Effect: Allow
             Action:
               - sns:Publish
             Resource: !Ref TeamNotificationTopic
-      - Statement:
+      - Statement:  # Access the key with which to check signatures
           - Sid: COSIGNKMSPolicy
             Effect: Allow
             Action:
               - kms:GetPublicKey
-              - kms:GenerateDataKey
-              - kms:Decrypt
               - kms:DescribeKey
-            Resource: !Ref KeyId
+            Resource: !Ref KeyArn
       Events:
         Trigger:
           Type: CloudWatchEvent 
