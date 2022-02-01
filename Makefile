@@ -77,7 +77,7 @@ go_build:
 	cd ./cosign-ecs-function && go mod tidy && \
 	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o cosign-ecs-function .
 
-sam_build:
+sam_build: go_build
 	sam build
 
 sam_package: sam_build
@@ -86,25 +86,33 @@ sam_package: sam_build
 		--output-template-file ${PACKAGED_TEMPLATE} \
 		--resolve-s3
 
-sam_deploy: sam_package
-	KEY_ARN=$$(aws kms describe-key --key-id alias/${KEY_ALIAS} --query KeyMetadata.Arn --output text); \
+sam_deploy: # sam_package
+	KEY_PEM=$$(cat cosign.pub; echo .); var=${var%.}; \
 	sam deploy \
 		--template-file ${SAM_TEMPLATE} \
 		--resolve-s3 \
-		--parameter-overrides KeyArn=$$KEY_ARN \
 		--capabilities CAPABILITY_IAM \
-		--stack-name ${STACK_NAME}
+		--stack-name ${STACK_NAME} \
+		--parameter-overrides \
+			"ParameterKey=KeyArn,ParameterValue=''" \
+			"ParameterKey=KeyPem,ParameterValue='$${KEY_PEM}'"
 
-sam_local: sam_build
-	sam local invoke \
-		--event ${EVENT} \
-		--template ${SAM_TEMPLATE}
-
-sam_local_debug: sam_build
+sam_local: # sam_build
+	KEY_PEM=$$(cat cosign.pub; echo .); var=${var%.}; \
 	sam local invoke \
 		--event ${EVENT} \
 		--template ${SAM_TEMPLATE} \
-		--debug
+		--parameter-overrides \
+			"ParameterKey=KeyArn,ParameterValue=''" \
+			"ParameterKey=KeyPem,ParameterValue='$${KEY_PEM}'"
+
+sam_local_debug: sam_build # --parameter-overrides "ParameterKey=KeyPem,ParameterValue=$(shell cat cosign.pub)"  "ParameterKey=KeyArn,ParameterValue="
+	sam local invoke \
+		--event ${EVENT} \
+		--template ${SAM_TEMPLATE} \
+		--parameter-overrides \
+			"ParameterKey=KeyArn,ParameterValue=''" \
+			"ParameterKey=KeyPem,ParameterValue='$${KEY_PEM}'"
 
 sam_delete:
 	sam delete \

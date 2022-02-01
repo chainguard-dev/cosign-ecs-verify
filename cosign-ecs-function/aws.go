@@ -62,16 +62,14 @@ func marshalNotificationMessage(clusterArn, taskDefinitionArn, taskArn string) (
 	return json.Marshal(NotificationMessage{message, clusterArn, taskDefinitionArn, taskArn})
 }
 
-func getKeyID(accountID, region string) (string, error) {
+func getKeyID(accountID, region string, keyARN string) (string, error) {
 	//Generate the public key from KMS ARN
-	keyID := os.Getenv("COSIGN_KEY")
-	if len(keyID) == 0 {
-		return "", errors.New("KMS ARN is empty")
+	if len(keyARN) == 0 {
+		return "", errors.New("keyARN is empty")
 	}
-	log.Printf("[INFO] Key Alias ARN: %v", keyID)
 	svc := kms.New(session.Must(session.NewSession()))
 	input := &kms.DescribeKeyInput{
-		KeyId: aws.String(keyID),
+		KeyId: aws.String(keyARN),
 	}
 
 	result, err := svc.DescribeKey(input)
