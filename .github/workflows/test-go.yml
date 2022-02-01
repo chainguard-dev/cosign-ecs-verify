@@ -19,7 +19,7 @@ jobs:
     steps:
       - uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579 #v2.4.0
         with:
-          ssh_key: ${{ secrets.BLOG_SECRET_KEY }}
+          ssh-key: ${{ secrets.BLOG_SECRET_KEY }}
       # https://github.com/mvdan/github-actions-golang#how-do-i-set-up-caching-between-builds
       - uses: actions/cache@937d24475381cd9c75ae6db12cb4e79714b926ed #v2.1.7
         with:
@@ -48,7 +48,7 @@ jobs:
     steps:
       - uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579 #v2.4.0
         with:
-          ssh_key: ${{ secrets.BLOG_SECRET_KEY }}
+          ssh-key: ${{ secrets.BLOG_SECRET_KEY }}
       - name: golangci-lint
         uses: golangci/golangci-lint-action@5c56cd6c9dc07901af25baab6f2b0d9f3b7c3018 #v2.5.2
         timeout-minutes: 5
