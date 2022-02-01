@@ -27,7 +27,9 @@ containers from running.
    1. Stop task definition
    2. SNS notification email to alert that the service/task has been stopped
 
-## Requirements and preliminaries.
+## Quickstart
+
+### Requirements and preliminaries.
 
 For this demo, you will need the following tools installed:
 
@@ -48,22 +50,7 @@ You should [configure the AWS CLI] for your project and account.
 
 [configure the AWS CLI]: https://docs.aws.amazon.com/cli/latest/reference/configure/
 
-We need a key against which to verify image signatures. If you have an existing
-keypair for cosign in AWS KMS, set it:
-
-``` shell
-export KEY_ALIAS=my-key
-```
-
-Otherwise, we can make one:
-
-``` shell
-export KEY_ALIAS=my-key
-make key_gen
-```
-
-## Deploy
-
+### Deploy
 To deploy, run:
 
 ```shell
@@ -82,13 +69,57 @@ This uses a SAM template (`template.yml`) to create:
   - You can [configure email notifications][sns-email] for this topic to be
     alerted whenever an unverified image is stopped.
   - Messages sent to the topic are [encrypted using a key in KMS][sns-kms].
+  
+It will check against the key in `cosign.pub` (see detailed instructions for how
+to change this).
 
 [SNS]: https://aws.amazon.com/sns/
 [sns-email]: https://docs.aws.amazon.com/sns/latest/dg/sns-email-notifications.html
 [sns-kms]: https://aws.amazon.com/blogs/compute/encrypting-messages-published-to-amazon-sns-with-aws-kms/
     
+### Test it
 
-## Test it
+The `terraform` subdirectory contains a Terraform template for an ECS cluster
+and task definitions for running our signed/unsigned tasks. First, initialize
+it (this will download required providers), then deploy:
+
+``` shell
+make tf_init
+make tf_apply  # run `make tf_plan` to see the plan first
+```
+
+We can then run our tasks:
+
+``` shell
+make run_unsigned_task
+make run_signed_task
+```
+
+Check. You should see the unsigned task in the `STOPPED` tasks and the signed
+task in the `RUNNING` tasks:
+
+``` shell
+make task_status
+```
+
+
+### Cleanup
+
+``` shell
+make stop_tasks
+make tf_destroy
+make sam_delete
+```
+
+
+## Local Dev
+
+- Go 1.17
+
+``` shell
+make sam_local 
+make sam_local_debug
+```
 
 ### Signed and unsigned images
 
@@ -117,10 +148,11 @@ Then, we can create a repository for the signed/unsigned images.
 
 ```shell
 REPO_NAME=ecr-demo-image
-REPO_URL=$(aws ecr create-repository \
-    --repository-name $REPO_NAME \
-    --query repository.repositoryUri \
-    --output text)
+# REPO_URL=$(aws ecr create-repository \
+#     --repository-name $REPO_NAME \
+#     --query repository.repositoryUri \
+#     --output text)
+REPO_URL=public.ecr.aws/d1r0p2a6/ecs-cosign-demo2
 ```
 Finally, we can build and push two simple images (see `Dockerfile`):
 
@@ -140,66 +172,4 @@ And sign *only one of them*:
 
 ``` shell
 cosign sign --key awskms:///alias/$KEY_ALIAS $IMAGE_URL_SIGNED
-```
-
-### Deploy a cluster and run tasks
-
-The `terraform` subdirectory contains a Terraform template for an ECS cluster
-and task definitions for running our signed/unsigned tasks. First, initialize
-it (this will download required providers):
-
-``` shell
-make tf_init
-```
-
-Then, deploy the template:
-
-``` shell
-make tf_apply  # run `make tf_plan` to see the plan first
-```
-
-We can then run our tasks:
-
-``` shell
-make run_unsigned_task
-make run_signed_task
-```
-
-*Note:* this will run on the tasks on a subnet of the [default VPC].
-
-[default VPC]: https://docs.aws.amazon.com/vpc/latest/userguide/default-vpc.html
-
-Check:
-
-``` shell
-make task_status
-```
-
-You should see the unsigned task in the `STOPPED` tasks and the signed task in the `RUNNING` tasks.
-
-
-### Cleanup
-
-``` shell
-make stop_tasks
-make tf_destroy
-make sam_delete
-# If you created an ECR repository (--force deletes the images in it):
-aws ecr delete-repository --repository-name $REPO_NAME --force
-# Clean up Docker mages locally
-docker images "*/$REPO_NAME" | xargs docker image rm --force
-# To clean up the KMS key used for signing:
-KEY_ID=$(aws kms describe-key --alias $KEY_ALIAS)
-aws kms delete-alias $KEY_ALIAS
-aws kms disable-key $KEY_ID
-```
-
-
-## Local Dev
-
-- Go 1.17
-
-``` shell
-make sam_local 
-make sam_local_debug
 ```

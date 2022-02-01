@@ -5,10 +5,8 @@ VERSION ?= 0.0.3
 AWS_REGION ?= us-west-2
 ACCOUNT_ID ?= $(shell aws sts get-caller-identity --query Account --output text)
 EVENT ?= event.json
-# TODO: should be able to change this
-IMAGE ?= distroless-base
-IMAGE_URL_SIGNED ?= ${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${IMAGE}:0.0.3
-IMAGE_URL_UNSIGNED ?= ${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${IMAGE}:unsigned
+IMAGE_URL_SIGNED ?= public.ecr.aws/d1r0p2a6/ecs-cosign-demo2:signed
+IMAGE_URL_UNSIGNED ?= public.ecr.aws/d1r0p2a6/ecs-cosign-demo2:unsigned
 
 AWS_DEFAULT_REGION = ${AWS_REGION}
 STACK_NAME = ${NAME}-stack
@@ -170,8 +168,8 @@ verify: key_gen ecr_auth
 .SILENT: ecr_auth
 ecr_auth:
 	REGISTRY_URL="$(ACCOUNT_ID).dkr.ecr.$(AWS_REGION).amazonaws.com"; \
-	aws ecr get-login-password | \
-		docker login --username AWS --password-stdin $$REGISTRY_URL
+	aws ecr-public get-login-password --region us-east-1 | \
+		docker login --username AWS --password-stdin public.ecr.aws
 
 
 clean:
