@@ -58,7 +58,7 @@ func sendNotificationEvent(clusterArn, taskDefinitionArn, taskArn string) {
 }
 
 func marshalNotificationMessage(clusterArn, taskDefinitionArn, taskArn string) ([]byte, error) {
-	message := fmt.Sprintf("Task Definition Attempted to run an unsigned container")
+	message := fmt.Sprintf("Task %v Attempted to run an unsigned container", taskArn)
 	return json.Marshal(NotificationMessage{message, clusterArn, taskDefinitionArn, taskArn})
 }
 

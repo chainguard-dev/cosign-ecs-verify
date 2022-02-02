@@ -1,0 +1,26 @@
+name: Verify signatures
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ['main']
+  pull_request:
+
+jobs:
+  test_cosign_action:
+    runs-on: ubuntu-latest
+
+    permissions:
+      actions: none
+
+    name: Install Cosign and test presence in path
+    steps:
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@main
+      - uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579 #v2.4.0
+        with:
+          ssh-key: ${{ secrets.BLOG_SECRET_KEY }}
+      - name: Check signed/unsigned image!
+        run: |
+          cosign verify --key cosign.pub public.ecr.aws/d1r0p2a6/ecs-cosign-demo2:signed && \
+          ! cosign verify --key cosign.pub public.ecr.aws/d1r0p2a6/ecs-cosign-demo2:unsigned
