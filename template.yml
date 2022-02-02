@@ -60,11 +60,12 @@ Resources:
           - kms:Decrypt
           Resource: !GetAtt TeamNotificationTopicKey.Arn
       - Statement:  # Cosign needs access images/signatures to verify.
-        - Sid: ECRPolicy
-          Effect: Allow
-          Action:
-            - ecr:*
-          Resource: 'arn:aws:ecr:*'
+          - Sid: ECRPolicy2
+            Effect: Allow
+            Action:
+              - ecr:*
+            Resource:
+              - '*'
       - Statement:  # Notify about invalid signatures via SNS
           - Sid: SNSPublishPolicy
             Effect: Allow
