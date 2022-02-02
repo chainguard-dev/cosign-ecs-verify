@@ -4,9 +4,9 @@ In this demo, we build an analog of a [Kubernetes admission controller] for
 Amazon [Elastic Container Service (ECS)][ECS] that checks all images to be run
 for a valid [cosign] signature with a given key in AWS [KMS].
 
-**NOTE:** This is demonstration code and as such shouldn't be used in
+**NOTE:** This is **Proof of Concept code** and as such shouldn't be used in
 production. In the event of misconfiguration or a bug, it can prevent all ECS
-containers from running.
+containers from running. Please let us know if you have any feedback or interest in learning more about this [interest@chainguard.dev](mailto:interest@chainguard.dev)
 
 [Kubernetes admission controller]: https://kubernetes.io/docs/reference/access-authn-authz/admission-controllers/
 [ECS]: https://aws.amazon.com/ecs/
@@ -59,6 +59,7 @@ Otherwise, we can make one:
 
 ``` shell
 export KEY_ALIAS=my-key
+export AWS_SDK_LOAD_CONFIG=true
 make key_gen
 ```
 
@@ -143,6 +144,7 @@ docker push $IMAGE_URL_UNSIGNED
 And sign *only one of them*:
 
 ``` shell
+export AWS_SDK_LOAD_CONFIG=true
 cosign sign --key awskms:///alias/$KEY_ALIAS $IMAGE_URL_SIGNED
 ```
 
@@ -207,3 +209,7 @@ aws kms disable-key $KEY_ID
 make sam_local 
 make sam_local_debug
 ```
+
+License
+
+[Apache License 2.0](LICENSE)
