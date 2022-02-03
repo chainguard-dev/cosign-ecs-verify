@@ -1,6 +1,6 @@
 # cosign-ecs-verify
 
-In this demo, we build an analog of a [Kubernetes admission controller] for
+In this prototype, we build an analog of a [Kubernetes admission controller] for
 Amazon [Elastic Container Service (ECS)][ECS] that checks all images to be run
 for a valid [cosign] signature with a given key in AWS [KMS].
 
@@ -29,7 +29,7 @@ containers from running. Please let us know if you have any feedback or interest
 
 ## Requirements and preliminaries.
 
-For this demo, you will need the following tools installed:
+To run, you will need the following tools installed:
 
 - `make` (e.g., [GNU make])
 - [Terraform]: for local testing
@@ -93,7 +93,7 @@ This uses a SAM template (`template.yml`) to create:
 
 ### Signed and unsigned images
 
-To see this demo in action, you need an example of a signed and unsigned image.
+To see the system in action, you need an example of a signed and unsigned image.
 
 If you already have a such images (ex. from a [previous post on the Chainguard blog][previous-blog]), we can use those:
 
