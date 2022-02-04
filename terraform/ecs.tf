@@ -72,15 +72,6 @@ resource "aws_iam_role_policy" "example" {
         "ecr:*"
       ],
       "Resource": "*"
-    },
-    {
-      "Effect": "Allow",
-      "Action": [
-        "ecr:*"
-      ],
-      "Resource": [
-        "${data.aws_ecr_repository.ecr.arn}"
-      ]
     }
   ]
 }
