@@ -77,7 +77,7 @@ go_build:
 	cd ./cosign-ecs-function && go mod tidy && \
 	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o cosign-ecs-function .
 
-sam_build:
+sam_build: go_build
 	sam build
 
 sam_package: sam_build
@@ -96,14 +96,18 @@ sam_deploy: sam_package
 		--stack-name ${STACK_NAME}
 
 sam_local: sam_build
+	KEY_ARN=$$(aws kms describe-key --key-id alias/${KEY_ALIAS} --query KeyMetadata.Arn --output text); \
 	sam local invoke \
 		--event ${EVENT} \
+		--parameter-overrides KeyArn=$$KEY_ARN \
 		--template ${SAM_TEMPLATE}
 
 sam_local_debug: sam_build
+	KEY_ARN=$$(aws kms describe-key --key-id alias/${KEY_ALIAS} --query KeyMetadata.Arn --output text); \
 	sam local invoke \
 		--event ${EVENT} \
 		--template ${SAM_TEMPLATE} \
+		--parameter-overrides KeyArn=$$KEY_ARN \
 		--debug
 
 sam_delete:
@@ -156,8 +160,11 @@ sign: ecr_auth
 key_gen:
 	cosign generate-key-pair --kms awskms:///alias/$(KEY_ALIAS)
 
-verify: key_gen ecr_auth
+verify_signed: ecr_auth
 	cosign verify --key awskms:///alias/$(KEY_ALIAS) ${IMAGE_URL_SIGNED}
+
+verify_unsigned: ecr_auth
+	cosign verify --key awskms:///alias/$(KEY_ALIAS) ${IMAGE_URL_UNSIGNED}
 
 .SILENT: ecr_auth
 ecr_auth:
