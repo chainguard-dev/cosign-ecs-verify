@@ -1,14 +1,11 @@
 NAME ?= cosign-ecs
-IMAGE ?= distroless-base
 KEY_ALIAS ?= ${NAME}-key
-VERSION ?= 0.0.3
 AWS_REGION ?= us-west-2
 ACCOUNT_ID ?= $(shell aws sts get-caller-identity --query Account --output text)
 EVENT ?= event.json
-# TODO: should be able to change this
-IMAGE ?= distroless-base
-IMAGE_URL_SIGNED ?= ${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${IMAGE}:0.0.3
-IMAGE_URL_UNSIGNED ?= ${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${IMAGE}:unsigned
+# These have the "signed" and "unsigned" tags, respectively, but we pin the digest.
+IMAGE_URL_SIGNED ?= public.ecr.aws/d1r0p2a6/ecs-cosign-demo2@sha256:31267f66e1aeb1f4a301faa75a7222927fa5bf1382697667b32ff580f9c6bfac
+IMAGE_URL_UNSIGNED ?= public.ecr.aws/d1r0p2a6/ecs-cosign-demo2@sha256:8648f155b13820cb73521d08ab0cc22a906735e5e932b0dc3e81a06008940e5c
 
 AWS_DEFAULT_REGION = ${AWS_REGION}
 STACK_NAME = ${NAME}-stack
@@ -190,7 +187,6 @@ ecr_auth:
 	REGISTRY_URL="$(ACCOUNT_ID).dkr.ecr.$(AWS_REGION).amazonaws.com"; \
 	aws ecr get-login-password | \
 		docker login --username AWS --password-stdin $$REGISTRY_URL
-
 
 clean:
 	rm -f ./cosign-ecs-function/cosign-ecs-function ${PACKAGED_TEMPLATE}
