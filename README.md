@@ -110,10 +110,6 @@ Otherwise, we'll build two simple images, push them to Amazon [ECR], and sign on
 
 First, login to ECR with Docker. We recommend using a [credential helper] for
 docker, but we also provide a Make target `make ecr_auth` that will authenticate
-
-``` shell
-aws ecr create-repository --repository-name $REPO_NAME
-```
 you to the default registry.
 
 [credential helper]: https://aws.amazon.com/blogs/compute/authenticating-amazon-ecr-repositories-for-docker-cli-with-credential-helper/
