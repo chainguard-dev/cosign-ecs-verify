@@ -37,7 +37,7 @@ Resources:
       Environment:
         Variables:
           SNS_TOPIC_ARN: !Ref TeamNotificationTopic
-          COSIGN_KEY: !Ref KeyArn
+          COSIGN_KEY_ARN: !Ref KeyArn
       Tracing: Active
       MemorySize: 512
       Policies:
