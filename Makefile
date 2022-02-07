@@ -1,25 +1,26 @@
 NAME ?= cosign-ecs
-IMAGE ?= distroless-base
 KEY_ALIAS ?= ${NAME}-key
-VERSION ?= 0.0.3
 AWS_REGION ?= us-west-2
 ACCOUNT_ID ?= $(shell aws sts get-caller-identity --query Account --output text)
 EVENT ?= event.json
-# TODO: should be able to change this
-IMAGE ?= distroless-base
-IMAGE_URL_SIGNED ?= ${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${IMAGE}:0.0.3
-IMAGE_URL_UNSIGNED ?= ${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${IMAGE}:unsigned
+# These have the "signed" and "unsigned" tags, respectively, but we pin the digest.
+IMAGE_URL_SIGNED ?= public.ecr.aws/d1r0p2a6/ecs-cosign-demo2@sha256:31267f66e1aeb1f4a301faa75a7222927fa5bf1382697667b32ff580f9c6bfac
+IMAGE_URL_UNSIGNED ?= public.ecr.aws/d1r0p2a6/ecs-cosign-demo2@sha256:8648f155b13820cb73521d08ab0cc22a906735e5e932b0dc3e81a06008940e5c
 
 AWS_DEFAULT_REGION = ${AWS_REGION}
 STACK_NAME = ${NAME}-stack
 SAM_TEMPLATE = template.yml
 PACKAGED_TEMPLATE = packaged.yml
 
-export
+GO_SRCS := $(wildcard cosign-ecs-function/*.go)
+
+export AWS_REGION AWS_DEFAULT_REGION
 
 ################################################################################
 # Terraform
 ################################################################################
+
+.PHONY: tf_clean tf_init tf_get tf_plan tf_apply tf_fmt tf_destroy tf_refresh
 
 tf_clean:
 	cd terraform/ && \
@@ -73,41 +74,52 @@ tf_refresh:
 # SAM
 ################################################################################
 
-go_build:
+.PHONY: sam_build sam_package sam_deploy sam_local sam_local_debug sam_delete
+
+cosign-ecs-function/cosign-ecs-function: $(GO_SRCS) cosign-ecs-function/go.mod cosign-ecs-function/go.sum
 	cd ./cosign-ecs-function && go mod tidy && \
 	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o cosign-ecs-function .
 
-sam_build: go_build
-	sam build
+go_build: cosign-ecs-function/cosign-ecs-function
 
-sam_package: sam_build
+# `sam build` will build the serverless binary itself
+sam_build:
+	sam build --cached
+
+sam_package: sam_build $(SAM_TEMPLATE)
 	sam package \
 		--template-file ${SAM_TEMPLATE} \
 		--output-template-file ${PACKAGED_TEMPLATE} \
 		--resolve-s3
 
 sam_deploy: sam_package
-	KEY_ARN=$$(aws kms describe-key --key-id alias/${KEY_ALIAS} --query KeyMetadata.Arn --output text); \
+	KEY_PEM=$$(cat cosign.pub; echo .); var=${var%.}; \
 	sam deploy \
 		--template-file ${SAM_TEMPLATE} \
 		--resolve-s3 \
-		--parameter-overrides KeyArn=$$KEY_ARN \
 		--capabilities CAPABILITY_IAM \
-		--stack-name ${STACK_NAME}
+		--stack-name ${STACK_NAME} \
+		--parameter-overrides \
+			"ParameterKey=KeyArn,ParameterValue=''" \
+			"ParameterKey=KeyPem,ParameterValue='$${KEY_PEM}'"
 
 sam_local: sam_build
-	KEY_ARN=$$(aws kms describe-key --key-id alias/${KEY_ALIAS} --query KeyMetadata.Arn --output text); \
-	sam local invoke \
-		--event ${EVENT} \
-		--parameter-overrides KeyArn=$$KEY_ARN \
-		--template ${SAM_TEMPLATE}
-
-sam_local_debug: sam_build
-	KEY_ARN=$$(aws kms describe-key --key-id alias/${KEY_ALIAS} --query KeyMetadata.Arn --output text); \
+	KEY_PEM=$$(cat cosign.pub; echo .); var=${var%.}; \
 	sam local invoke \
 		--event ${EVENT} \
 		--template ${SAM_TEMPLATE} \
-		--parameter-overrides KeyArn=$$KEY_ARN \
+		--parameter-overrides \
+			"ParameterKey=KeyArn,ParameterValue=''" \
+			"ParameterKey=KeyPem,ParameterValue='$${KEY_PEM}'"
+
+sam_local_debug: sam_build
+	KEY_PEM=$$(cat cosign.pub; echo .); var=${var%.}; \
+	sam local invoke \
+		--event ${EVENT} \
+		--template ${SAM_TEMPLATE} \
+		--parameter-overrides \
+			"ParameterKey=KeyArn,ParameterValue=''" \
+			"ParameterKey=KeyPem,ParameterValue='$${KEY_PEM}'" \
 		--debug
 
 sam_delete:
@@ -120,6 +132,8 @@ sam_delete:
 ################################################################################
 # Test it out!
 ################################################################################
+
+.PHONY: run_signed_task run_unsigned_task task_status
 
 run_signed_task:
 	TASK_DEF_ARN=$$(cd terraform && terraform output -raw signed_task_arn) && \
@@ -154,11 +168,13 @@ task_status:
 # Setup and cleanup
 ################################################################################
 
-sign: ecr_auth
-	cosign sign --key awskms:///alias/$(KEY_ALIAS) ${IMAGE_URL_SIGNED}
+.PHONY: key_gen sign verify_signed verify_unsigned ecr_auth clean stop_tasks
 
 key_gen:
 	cosign generate-key-pair --kms awskms:///alias/$(KEY_ALIAS)
+
+sign: ecr_auth
+	cosign sign --key awskms:///alias/$(KEY_ALIAS) ${IMAGE_URL_SIGNED}
 
 verify_signed: ecr_auth
 	cosign verify --key awskms:///alias/$(KEY_ALIAS) ${IMAGE_URL_SIGNED}
@@ -171,7 +187,6 @@ ecr_auth:
 	REGISTRY_URL="$(ACCOUNT_ID).dkr.ecr.$(AWS_REGION).amazonaws.com"; \
 	aws ecr get-login-password | \
 		docker login --username AWS --password-stdin $$REGISTRY_URL
-
 
 clean:
 	rm -f ./cosign-ecs-function/cosign-ecs-function ${PACKAGED_TEMPLATE}

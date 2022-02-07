@@ -11,6 +11,12 @@ Globals:
 Parameters:
     KeyArn:
       Type: String
+      Default: ""
+    KeyPem:
+      Type: String
+      Default: ""
+Conditions:
+  IsKeyArn: !Not [!Equals [!Ref KeyArn, ""]]
 Resources:
   TeamNotificationTopic:
     Type: AWS::SNS::Topic
@@ -27,6 +33,19 @@ Resources:
               AWS: !Sub 'arn:aws:iam::${AWS::AccountId}:root'
             Resource: '*'
       EnableKeyRotation: true
+  KmsAccess:
+    Type: AWS::IAM::Policy
+    Condition: IsKeyArn
+    Properties:
+      PolicyDocument:
+        Effect: Allow
+        Action:
+          - kms:GetPublicKey
+          - kms:DescribeKey
+        Resource: !Ref KeyArn
+      PolicyName: KmsAccess
+      Roles:
+        - !GetAtt ECSApprovedContainerRegistryFunction.Role
   ECSApprovedContainerRegistryFunction:
     Type: AWS::Serverless::Function 
     Properties:
@@ -37,7 +56,8 @@ Resources:
       Environment:
         Variables:
           SNS_TOPIC_ARN: !Ref TeamNotificationTopic
-          COSIGN_KEY: !Ref KeyArn
+          COSIGN_KEY_ARN: !Ref KeyArn
+          COSIGN_KEY_PEM: !Ref KeyPem
       Tracing: Active
       MemorySize: 512
       Policies:
@@ -60,25 +80,17 @@ Resources:
           - kms:Decrypt
           Resource: !GetAtt TeamNotificationTopicKey.Arn
       - Statement:  # Cosign needs access images/signatures to verify.
-          - Sid: ECRPolicy2
-            Effect: Allow
-            Action:
-              - ecr:*
-            Resource:
-              - '*'
+        - Sid: ECRPolicy
+          Effect: Allow
+          Action:
+            - ecr:*
+          Resource: '*'
       - Statement:  # Notify about invalid signatures via SNS
           - Sid: SNSPublishPolicy
             Effect: Allow
             Action:
               - sns:Publish
             Resource: !Ref TeamNotificationTopic
-      - Statement:  # Access the key with which to check signatures
-          - Sid: COSIGNKMSPolicy
-            Effect: Allow
-            Action:
-              - kms:GetPublicKey
-              - kms:DescribeKey
-            Resource: !Ref KeyArn
       Events:
         Trigger:
           Type: CloudWatchEvent 

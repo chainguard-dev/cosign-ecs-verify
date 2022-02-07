@@ -1,11 +1,11 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
 	"log"
-	"os"
 )
 
 func handler(event events.CloudWatchEvent) {
@@ -33,16 +33,16 @@ func handler(event events.CloudWatchEvent) {
 	log.Printf("[INFO] taskDefinitionArn: %v\n", lambdaEvent.Detail.TaskDefinitionArn)
 	log.Printf("[INFO] accountId: %v\n", lambdaEvent.Account)
 
-	keyID := os.Getenv("COSIGN_KEY")
-	if len(keyID) == 0 {
-		log.Printf("KMS ARN is empty")
+	ctx := context.TODO()
+	pubKey, err := getKey(ctx, lambdaEvent.Account, lambdaEvent.Region)
+	if err != nil {
+		log.Printf("[ERROR] Getting key: %v", err)
+		return
 	}
-	log.Printf("[INFO] Key ARN: %v", keyID)
 
 	for i := 0; i < len(lambdaEvent.Detail.Containers); i++ {
 		log.Printf("[INFO] Container Image %v : %v", i, lambdaEvent.Detail.Containers[i].Image)
-
-		verified, err := Verify(lambdaEvent.Detail.Containers[i].Image, keyID)
+		verified, err := Verify(lambdaEvent.Detail.Containers[i].Image, pubKey)
 		if err != nil {
 			log.Printf("[ERROR] Error while verifing image: %v %v", verified, err)
 		}
