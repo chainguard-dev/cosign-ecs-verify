@@ -1,4 +1,4 @@
-package main
+package main // import "chainguard.dev/cosign-ecs-verify/cosign-ecs-function"
 
 import (
 	"context"
