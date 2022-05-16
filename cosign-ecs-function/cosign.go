@@ -5,6 +5,9 @@ import (
 	"crypto"
 	"errors"
 	"fmt"
+	"log"
+	"os"
+
 	ecrlogin "github.com/awslabs/amazon-ecr-credential-helper/ecr-login"
 	"github.com/awslabs/amazon-ecr-credential-helper/ecr-login/api"
 	"github.com/google/go-containerregistry/pkg/authn"
@@ -14,8 +17,6 @@ import (
 	ociremote "github.com/sigstore/cosign/pkg/oci/remote"
 	sigs "github.com/sigstore/cosign/pkg/signature"
 	sigstoresigs "github.com/sigstore/sigstore/pkg/signature"
-	"log"
-	"os"
 )
 
 func getKey(ctx context.Context, accountID, region string) (sigstoresigs.Verifier, error) {
