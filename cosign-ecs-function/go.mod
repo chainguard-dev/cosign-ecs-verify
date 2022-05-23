@@ -1,4 +1,4 @@
-module github.com/strongjz/cosign-ecs-verify/cosign-ecs-function
+module github.com/chainguard-dev/cosign-ecs-verify/cosign-ecs-function
 
 go 1.17
 
